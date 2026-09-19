@@ -1,0 +1,146 @@
+import React, { useEffect } from "react";
+import { X, Inbox, Loader2, AlertTriangle } from "lucide-react";
+
+export function cx(...a) { return a.filter(Boolean).join(" "); }
+
+export function Card({ className, children, ...p }) {
+  return (
+    <div className={cx("bg-surface rounded-xl border border-line shadow-xs", className)} {...p}>
+      {children}
+    </div>
+  );
+}
+
+export function Button({ variant = "primary", size = "md", className, children, ...p }) {
+  const variants = {
+    primary: "bg-brand text-white hover:bg-brand-hover shadow-xs",
+    secondary: "bg-white text-ink border border-line hover:bg-muted",
+    ghost: "text-subink hover:bg-muted",
+    danger: "bg-expense text-white hover:brightness-95",
+    dark: "bg-ink text-white hover:bg-slate-800",
+  };
+  const sizes = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm", lg: "h-11 px-5 text-sm" };
+  return (
+    <button
+      className={cx("inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98]",
+        variants[variant], sizes[size], className)}
+      {...p}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function Field({ label, children, className }) {
+  return (
+    <label className={cx("block", className)}>
+      {label && <span className="overline text-faint block mb-1.5">{label}</span>}
+      {children}
+    </label>
+  );
+}
+
+const inputCls = "w-full h-10 px-3 rounded-lg border border-line bg-white text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition";
+
+export function Input({ className, ...p }) { return <input className={cx(inputCls, className)} {...p} />; }
+export function Textarea({ className, ...p }) { return <textarea className={cx(inputCls, "h-auto py-2 min-h-[76px]", className)} {...p} />; }
+export function Select({ className, children, ...p }) {
+  return <select className={cx(inputCls, "appearance-none bg-no-repeat pr-8", className)}
+    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")", backgroundPosition: "right 10px center" }} {...p}>{children}</select>;
+}
+
+const badgeMap = {
+  green: "text-emerald-700 bg-emerald-50 border-emerald-200",
+  red: "text-rose-700 bg-rose-50 border-rose-200",
+  amber: "text-amber-700 bg-amber-50 border-amber-200",
+  blue: "text-sky-700 bg-sky-50 border-sky-200",
+  gray: "text-slate-600 bg-slate-100 border-slate-200",
+  brand: "text-teal-700 bg-teal-50 border-teal-200",
+};
+export function Badge({ tone = "gray", children, className }) {
+  return <span className={cx("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border", badgeMap[tone] || badgeMap.gray, className)}>{children}</span>;
+}
+
+const statusTones = {
+  ACTIVE: "blue", PARTIALLY_REPAID: "amber", FULLY_REPAID: "green", OVERDUE: "red", WRITTEN_OFF: "gray",
+  COLLECTED: "green", PARTIAL: "amber", PENDING: "amber", PLANNING: "gray", ON_HOLD: "amber",
+  COMPLETED: "green", ARCHIVED: "gray", OCCUPIED: "green", VACANT: "gray",
+};
+export function StatusBadge({ status }) {
+  if (!status) return null;
+  return <Badge tone={statusTones[status] || "gray"}>{status.replace(/_/g, " ").toLowerCase()}</Badge>;
+}
+
+export function Modal({ open, onClose, title, children, size = "md" }) {
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+  }, [open, onClose]);
+  if (!open) return null;
+  const w = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" data-testid="modal">
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px] animate-fade-in" onClick={onClose} />
+      <div className={cx("relative bg-surface w-full rounded-t-2xl sm:rounded-2xl shadow-pop border border-line animate-fade-up max-h-[92vh] overflow-y-auto", w)}>
+        <div className="sticky top-0 bg-surface/95 backdrop-blur border-b border-line px-5 py-4 flex items-center justify-between z-10">
+          <h3 className="font-display font-semibold text-lg text-ink">{title}</h3>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-subink" data-testid="modal-close"><X size={18} /></button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export function Spinner({ className }) { return <Loader2 className={cx("animate-spin", className)} />; }
+
+export function StateBlock({ loading, error, empty, emptyText = "No records yet", onRetry, children }) {
+  if (loading) return <div className="flex flex-col items-center justify-center py-20 text-faint gap-3"><Spinner className="w-6 h-6 text-brand" /><span className="text-sm">Loading…</span></div>;
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+      <AlertTriangle className="w-8 h-8 text-amber" />
+      <p className="text-sm text-subink">Couldn't load data.</p>
+      {onRetry && <Button variant="secondary" size="sm" onClick={onRetry}>Retry</Button>}
+    </div>
+  );
+  if (empty) return (
+    <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+      <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center"><Inbox className="w-6 h-6 text-faint" /></div>
+      <p className="text-sm text-subink">{emptyText}</p>
+    </div>
+  );
+  return children;
+}
+
+export function PageHeader({ title, subtitle, actions, icon: Icon }) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+      <div className="flex items-start gap-3">
+        {Icon && <div className="w-11 h-11 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0"><Icon size={22} /></div>}
+        <div>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">{title}</h1>
+          {subtitle && <p className="text-sm text-subink mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+export function Segmented({ options, value, onChange, testid }) {
+  return (
+    <div className="inline-flex bg-muted rounded-lg p-0.5 border border-line" data-testid={testid}>
+      {options.map((o) => (
+        <button key={o.value} onClick={() => onChange(o.value)}
+          className={cx("px-3 py-1.5 rounded-md text-xs font-semibold transition-colors",
+            value === o.value ? "bg-white text-ink shadow-xs" : "text-subink hover:text-ink")}
+          data-testid={`seg-${o.value}`}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}

@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+
+* { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: #F6F7F9;
+  color: #0F172A;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+
+::selection { background: #CCFBF1; color: #042F2E; }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 8px; border: 2px solid #F6F7F9; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+.num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+.overline { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

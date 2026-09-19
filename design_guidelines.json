@@ -1,0 +1,266 @@
+{
+  "project_name": "Nivara",
+  "tagline": "Personal Financial Operating System & Project Command Center",
+  "archetype": "The Swiss Precision & Warm Architectural Obsidian Hybrid",
+  "theme_strategy": {
+    "default_mode": "light",
+    "mode_toggle_supported": true,
+    "philosophy": "Light-first for calm, daytime financial trust with deep slate-ink contrast; optional deep obsidian mode with elevation-based surfaces for focused evening audits. No pure black #000000, no generic saturated blues, and strictly no AI-slop gradients."
+  },
+  "typography": {
+    "font_family_headings": "Cabinet Grotesk, Outfit, system-ui, -apple-system, sans-serif",
+    "font_family_body": "IBM Plex Sans, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif",
+    "font_family_numbers": "JetBrains Mono, SF Mono, Menlo, monospace",
+    "google_fonts_embed_url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap",
+    "scale": {
+      "h1": "text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 dark:text-slate-100",
+      "h2": "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100",
+      "h3": "text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-200",
+      "h4": "text-base sm:text-lg font-medium text-slate-800 dark:text-slate-200",
+      "kpi_value": "text-2xl sm:text-3xl font-bold tracking-tight font-mono text-slate-900 dark:text-slate-50",
+      "body": "text-sm sm:text-base font-normal text-slate-600 dark:text-slate-300 leading-relaxed",
+      "caption": "text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider",
+      "label": "text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-widest font-mono"
+    },
+    "rules": [
+      "Strict ban on Inter and Roboto for headings and titles.",
+      "Headings MUST use tight tracking (tracking-tight or tracking-tighter).",
+      "Currency and financial figures MUST use JetBrains Mono (font-mono) for tabular numerical alignment.",
+      "Overlines and table column headers MUST be uppercase, tiny (text-[11px] or text-xs) with tracking-widest."
+    ]
+  },
+  "colors": {
+    "light": {
+      "background": "#F8FAFC",
+      "surface_base": "#FFFFFF",
+      "surface_muted": "#F1F5F9",
+      "surface_highlight": "#F8FAFC",
+      "border": "#E2E8F0",
+      "border_strong": "#CBD5E1",
+      "text_primary": "#0F172A",
+      "text_secondary": "#475569",
+      "text_muted": "#94A3B8"
+    },
+    "dark": {
+      "background": "#0B0F17",
+      "surface_base": "#111827",
+      "surface_elevated": "#1E293B",
+      "surface_muted": "#0F172A",
+      "border": "#1E293B",
+      "border_strong": "#334155",
+      "text_primary": "#F8FAFC",
+      "text_secondary": "#94A3B8",
+      "text_muted": "#64748B"
+    },
+    "brand_accents": {
+      "primary": "#0F766E",
+      "primary_hover": "#115E59",
+      "primary_light": "#CCFBF1",
+      "primary_dark": "#042F2E",
+      "architectural_amber": "#D97706",
+      "architectural_amber_light": "#FEF3C7",
+      "indigo_navy": "#1E3A8A",
+      "indigo_navy_light": "#DBEAFE"
+    },
+    "semantic_finance": {
+      "income_positive": {
+        "text": "#059669",
+        "bg_light": "#ECFDF5",
+        "border": "#A7F3D0",
+        "badge": "text-emerald-700 bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+      },
+      "expense_negative": {
+        "text": "#E11D48",
+        "bg_light": "#FFF1F2",
+        "border": "#FECDD3",
+        "badge": "text-rose-700 bg-rose-50 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800"
+      },
+      "pending_warning": {
+        "text": "#D97706",
+        "bg_light": "#FFFBEB",
+        "border": "#FDE68A",
+        "badge": "text-amber-700 bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+      },
+      "neutral_info": {
+        "text": "#0284C7",
+        "bg_light": "#F0F9FF",
+        "border": "#BAE6FD",
+        "badge": "text-sky-700 bg-sky-50 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800"
+      },
+      "settled_recovered": {
+        "text": "#10B981",
+        "bg_light": "#F0FDF4",
+        "border": "#BBF7D0",
+        "badge": "text-emerald-800 bg-emerald-100 border border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-200"
+      },
+      "overdue_critical": {
+        "text": "#B91C1C",
+        "bg_light": "#FEF2F2",
+        "border": "#FCA5A5",
+        "badge": "text-red-700 bg-red-50 border border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800"
+      }
+    },
+    "charts": {
+      "palette": [
+        "#0D9488",
+        "#2563EB",
+        "#F59E0B",
+        "#10B981",
+        "#8B5CF6",
+        "#EC4899",
+        "#F97316",
+        "#64748B"
+      ],
+      "income_series": "#10B981",
+      "expense_series": "#F43F5E",
+      "net_cash_flow": "#0284C7",
+      "budget_series": "#94A3B8",
+      "actual_spend_series": "#D97706"
+    }
+  },
+  "layout_and_spacing": {
+    "app_shell": "min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 flex flex-col md:flex-row antialiased",
+    "sidebar": "w-64 bg-white dark:bg-[#111827] border-r border-slate-200 dark:border-slate-800 flex-shrink-0 hidden md:flex flex-col h-screen sticky top-0 z-30",
+    "header": "h-16 px-4 md:px-8 bg-white/90 dark:bg-[#111827]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 flex items-center justify-between",
+    "main_content": "flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-24 md:pb-12",
+    "mobile_bottom_nav": "md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/95 dark:bg-[#111827]/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 z-40 px-3 flex items-center justify-around",
+    "mobile_fab": "md:hidden fixed bottom-20 right-4 z-40 h-13 w-13 rounded-full bg-teal-600 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform border border-teal-500",
+    "bento_rules": {
+      "kpi_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6",
+      "charts_grid": "grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6",
+      "tables_split": "grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6",
+      "internal_padding": "p-5 sm:p-6",
+      "border_radius": "rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-xs bg-white dark:bg-[#111827]"
+    }
+  },
+  "components_spec": {
+    "kpi_card": {
+      "classes": "relative overflow-hidden rounded-xl bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer group",
+      "features": [
+        "Interactive drill-down on click (e.g. click Total Lending navigates directly to /lending)",
+        "Top micro-label with category badge",
+        "Tabular font-mono amount with currency symbol (₹ or $)",
+        "Subtitle with trend indicator (+12.4% MoM or status counter)",
+        "Trailing drill-down arrow appearing or shifting right on hover",
+        "data-testid on each card (e.g. data-testid='kpi-total-lending')"
+      ]
+    },
+    "context_switcher": {
+      "location": "Header left & Sidebar top",
+      "states": [
+        "All Finances (Consolidated Personal + Projects)",
+        "Personal Wealth Only (Accounts, PF, RD/FD, Family)",
+        "Project: Skyline Heights (Phase 2 Construction)",
+        "Project: Apex Logistics Hub (Industrial Warehouse)",
+        "Project: Green Terraces (Boutique Villas)"
+      ],
+      "style": "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+    },
+    "data_table": {
+      "container": "overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111827]",
+      "table": "w-full text-left text-sm",
+      "thead": "bg-slate-50 dark:bg-slate-800/50 text-[11px] font-semibold tracking-wider text-slate-500 uppercase border-b border-slate-200 dark:border-slate-800",
+      "th": "px-4 py-3 font-mono",
+      "td": "px-4 py-3.5 border-b border-slate-100 dark:border-slate-800/60 text-slate-700 dark:text-slate-200",
+      "row_hover": "hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+    },
+    "permission_matrix": {
+      "roles": ["Admin (Full Control)", "Architect (Designs & BOQ)", "Contractor A (Civil & Structural)", "Contractor B (Electrical & Plumbing)", "Auditor / Accountant (Read Only)"],
+      "modules": ["Overview", "Budget & BOQ", "Daily Spend & Expenses", "Vendor Payments", "Contracts", "Blueprints & Docs", "Party Ledgers"],
+      "presentation": "Clean granular toggle grid with chip statuses, clear visual state between Allowed (Green check), Read-only (Blue eye), and Locked (Gray slash)."
+    },
+    "quick_action_modal": {
+      "triggers": ["FAB on mobile", "'+ Record Transaction' CTA in Header"],
+      "options": [
+        "Record Personal Expense",
+        "Log Income / Dividend",
+        "Add Lending Record (Money Out)",
+        "Log Lending Recovery (Money In)",
+        "Log Rental Collection",
+        "Record Project Expense (Materials/Labour)"
+      ]
+    }
+  },
+  "image_urls": {
+    "projects": [
+      {
+        "category": "project_residential_construction",
+        "description": "Modern urban residence under construction with concrete formwork and scaffolding",
+        "image_url": "https://images.unsplash.com/photo-1789603390646-fa0d023ed76a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmUlMjBjb25zdHJ1Y3Rpb24lMjBwcm9qZWN0JTIwc2l0ZXxlbnwwfHx8fDE3ODk4MTE0MjR8MA&ixlib=rb-4.1.0&q=85",
+        "target_component": "ProjectCard, ProjectWorkspaceHeader (Skyline Heights Residential)"
+      },
+      {
+        "category": "project_commercial_warehouse",
+        "description": "High-spec modern industrial warehouse interior with concrete flooring and roof trusses",
+        "image_url": "https://images.unsplash.com/photo-1771530789155-b1f03fbf82b5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwxfHxpbmR1c3RyaWFsJTIwbW9kZXJuJTIwd2FyZWhvdXNlJTIwY29tbWVyY2lhbCUyMHByb3BlcnR5fGVufDB8fHx8MTc4OTgxMTQyOHww&ixlib=rb-4.1.0&q=85",
+        "target_component": "ProjectCard, ProjectWorkspaceHeader (Apex Logistics Hub)"
+      },
+      {
+        "category": "rental_property_residential",
+        "description": "Contemporary multi-story luxury home with stone cladding and warm illumination",
+        "image_url": "https://images.unsplash.com/photo-1722421492323-eaf9c401befe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBob3VzZSUyMHJlc2lkZW50aWFsJTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc4OTgxMTQyOHww&ixlib=rb-4.1.0&q=85",
+        "target_component": "RentalPropertiesList (Oakridge Villa & Green Terraces)"
+      },
+      {
+        "category": "project_facade_finishing",
+        "description": "Modern finished building with architectural windows and terrace framing",
+        "image_url": "https://images.unsplash.com/photo-1721815693498-cc28507c0ba2?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBob3VzZSUyMHJlc2lkZW50aWFsJTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc4OTgxMTQyOHww&ixlib=rb-4.1.0&q=85",
+        "target_component": "ProjectGalleryModal, DocumentAttachments"
+      }
+    ]
+  },
+  "navigation_structure": {
+    "sections": [
+      {
+        "group": "Personal Finances",
+        "items": [
+          {"name": "Overview", "path": "/", "icon": "LayoutDashboard", "data_testid": "nav-overview"},
+          {"name": "Cash Flow", "path": "/cash-flow", "icon": "ArrowLeftRight", "data_testid": "nav-cash-flow"},
+          {"name": "Accounts & Cash", "path": "/accounts", "icon": "Wallet", "data_testid": "nav-accounts"},
+          {"name": "Income", "path": "/income", "icon": "TrendingUp", "data_testid": "nav-income"},
+          {"name": "Expenses", "path": "/expenses", "icon": "CreditCard", "data_testid": "nav-expenses"},
+          {"name": "Lending & Borrowing", "path": "/lending", "icon": "Handshake", "data_testid": "nav-lending"},
+          {"name": "Savings & Investments", "path": "/savings", "icon": "PiggyBank", "data_testid": "nav-savings"},
+          {"name": "PF & PPF", "path": "/pf-ppf", "icon": "ShieldCheck", "data_testid": "nav-pf-ppf"},
+          {"name": "Rental Income", "path": "/rental", "icon": "Building2", "data_testid": "nav-rental"}
+        ]
+      },
+      {
+        "group": "Projects Management",
+        "items": [
+          {"name": "All Projects", "path": "/projects", "icon": "FolderKanban", "data_testid": "nav-projects"},
+          {"name": "Skyline Heights", "path": "/projects/skyline", "icon": "HardHat", "data_testid": "nav-proj-skyline"},
+          {"name": "Apex Logistics Hub", "path": "/projects/apex-warehouse", "icon": "Warehouse", "data_testid": "nav-proj-apex"}
+        ]
+      },
+      {
+        "group": "Governance & Admin",
+        "items": [
+          {"name": "Family Members", "path": "/family", "icon": "Users", "data_testid": "nav-family"},
+          {"name": "Access Control", "path": "/access-control", "icon": "KeyRound", "data_testid": "nav-access-control"},
+          {"name": "Documents & Vault", "path": "/documents", "icon": "FileText", "data_testid": "nav-documents"},
+          {"name": "System Settings", "path": "/settings", "icon": "Settings", "data_testid": "nav-settings"}
+        ]
+      }
+    ],
+    "mobile_tabs": [
+      {"name": "Home", "path": "/", "icon": "LayoutDashboard", "data_testid": "mobile-nav-home"},
+      {"name": "Lending", "path": "/lending", "icon": "Handshake", "data_testid": "mobile-nav-lending"},
+      {"name": "Projects", "path": "/projects", "icon": "FolderKanban", "data_testid": "mobile-nav-projects"},
+      {"name": "Rental", "path": "/rental", "icon": "Building2", "data_testid": "mobile-nav-rental"},
+      {"name": "Admin", "path": "/access-control", "icon": "ShieldAlert", "data_testid": "mobile-nav-admin"}
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow JavaScript (.js, .jsx) syntax in all created components, not TypeScript (.tsx).",
+    "Install and use lucide-react icons exclusively for standard visual cues.",
+    "Implement context switcher in Header so selecting a project filters or navigates to that project's finances immediately.",
+    "Include granular test IDs: every button, KPI card, tab, select input, and table row must have unique data-testid attributes.",
+    "Keep navigation clearly separated between Personal Finance (Core) and Projects (Specialized).",
+    "Design dedicated Lending Dashboard with distinct metrics: Total Lent, Recovered Amount, Overdue, Recovery Rate chart, and Person Ledger with 'Record Payment' button.",
+    "Design dedicated Access Control view where Admin can grant read/write/none permissions by role (Architect, Contractor A, Contractor B) across specific project modules.",
+    "Support both mobile responsive flow (bottom bar, sticky mini header, touchable action sheets) and dense desktop workstation view with collapsable sidebar.",
+    "DO NOT use transparent headers or dropdown backgrounds. Always provide backdrop-blur with minimum 80% opacity and subtle 1px border.",
+    "Use Recharts with the specific semantic finance color palette provided."
+  ]
+}
