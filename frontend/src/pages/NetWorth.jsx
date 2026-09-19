@@ -9,13 +9,15 @@ import { inr } from "../lib/format";
 
 export default function NetWorth() {
   const { data, loading, error, refetch } = useFetch("/networth");
+  const family = useFetch("/family");
+  const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
   const assetFields = [
     { key: "name", label: "Asset Name", required: true, full: true },
     { key: "type", label: "Type", type: "select", options: ["Property", "Vehicle", "Equipment", "Gold", "Investment Asset", "Other"], default: "Property" },
     { key: "purchase_value", label: "Purchase Value (₹)", type: "money" },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
-    { key: "owner", label: "Owner", default: "Self" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
     { key: "notes", label: "Notes", type: "textarea", full: true },
   ];
   const assetCols = [

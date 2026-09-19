@@ -72,7 +72,7 @@ async def delete_account(item_id: str, user: dict = Depends(require_admin)):
 async def list_transactions(request: Request, user: dict = Depends(require_admin)):
     q = {"deleted_at": {"$exists": False}}
     params = dict(request.query_params)
-    for key in ("type", "scope", "project_id", "category", "account_id", "family_member_id", "source"):
+    for key in ("type", "scope", "project_id", "category", "account_id", "family_member_id", "source", "farm_id", "party"):
         if params.get(key):
             q[key] = params[key]
     date_q = {}

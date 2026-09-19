@@ -158,3 +158,97 @@ async def seed_demo():
          "password_hash": hash_password("Contractor@2026"), "active": True,
          "permissions": [{"project_id": proj_id, "project_name": "Skyline Heights Residence", "modules": {"work": "edit", "documents": "edit", "requests": "edit", "payments": "view"}}], "created_at": now_utc()},
     ])
+
+
+async def seed_v2():
+    """Idempotent additive seed for loans, insurance, vehicles, farms, work logs."""
+    # ---- home loan (real data) ----
+    if await db.loans.count_documents({}) == 0:
+        await db.loans.insert_one({
+            "name": "Godrej Woodsville Home Loan",
+            "lender": "ICICI Bank", "branch": "Pimple Saudagar, Pune",
+            "type": "Home Loan", "account_name": "ANIKE",
+            "property": "Plot (Galt), Godrej Woodsville Township, Hinjewadi, Pune",
+            "sanctioned": 7000000, "disbursed": 6890624,
+            "emi": 54570, "interest_rate": 7.30,
+            "outstanding": 4984251,
+            "start_date": "2023-06-04", "next_due_date": "2026-10-04",
+            "maturity_date": "2038-11-04", "tenure_months": 174,
+            "status": "Open", "notes": "EMI auto-debit. Prepayments made — outstanding as per bank statement 04/09/2026.",
+            "created_at": now_utc(),
+        })
+
+    # ---- vehicles as assets ----
+    if not await db.assets.find_one({"name": {"$regex": "Creta"}}):
+        await db.assets.insert_many([
+            {"type": "Vehicle", "name": "Hyundai Creta (MH12TN6513)", "reg_no": "MH12TN6513",
+             "purchase_value": 1600000, "current_value": 1250000, "owner": "Self",
+             "purchase_date": "2022-10-01", "notes": "Bought Oct 2022", "created_at": now_utc()},
+            {"type": "Vehicle", "name": "TVS Apache RTR 200 4V", "reg_no": "",
+             "purchase_value": 145000, "current_value": 95000, "owner": "Self",
+             "purchase_date": "2021-01-01", "notes": "Bought 2021", "created_at": now_utc()},
+        ])
+
+    # ---- insurance ----
+    if await db.insurance.count_documents({}) == 0:
+        await db.insurance.insert_many([
+            {"type": "Car", "policy_name": "Creta Motor Insurance", "provider": "ICICI Lombard",
+             "policy_number": "", "insured": "Self", "asset_ref": "MH12TN6513",
+             "premium": 28000, "frequency": "Yearly", "sum_insured": 1250000,
+             "renewal_date": "2026-09-26", "status": "Active",
+             "payments": [{"date": "2025-09-24", "amount": 26500, "note": "2025 renewal"}],
+             "notes": "Creta comprehensive", "created_at": now_utc()},
+            {"type": "Bike", "policy_name": "Apache 200 4V Insurance", "provider": "Bajaj Allianz",
+             "insured": "Self", "asset_ref": "Apache 200 4V", "premium": 4200,
+             "frequency": "Yearly", "sum_insured": 95000, "renewal_date": "2026-11-15",
+             "status": "Active", "payments": [], "created_at": now_utc()},
+            {"type": "Health", "policy_name": "Family Health Floater", "provider": "Star Health",
+             "insured": "Family", "premium": 32000, "frequency": "Yearly", "sum_insured": 1000000,
+             "renewal_date": "2027-03-10", "status": "Active",
+             "payments": [{"date": "2026-03-08", "amount": 32000, "note": "FY26 premium"}],
+             "notes": "Covers Self, Priya, Aarav", "created_at": now_utc()},
+        ])
+
+    # ---- farms (guava) + ledger ----
+    if await db.farms.count_documents({}) == 0:
+        f1 = await db.farms.insert_one({"name": "Guava Farm - Block A", "number": "GF-001", "area": 4.5,
+                                        "area_unit": "acre", "crop": "Guava (Allahabad Safeda)", "location": "Junnar, Pune",
+                                        "notes": "260 trees", "created_at": now_utc()})
+        f2 = await db.farms.insert_one({"name": "Guava Farm - Block B", "number": "GF-002", "area": 3.0,
+                                        "area_unit": "acre", "crop": "Guava (Taiwan Pink)", "location": "Junnar, Pune",
+                                        "notes": "180 trees", "created_at": now_utc()})
+        fids = [str(f1.inserted_id), str(f2.inserted_id)]
+        ftx = []
+        for i, fid in enumerate(fids):
+            for m in range(4):
+                mk = month_ago(m)
+                ftx.append({"type": "INCOME", "date": f"{mk}-12", "amount": 85000 - i * 20000, "scope": "FARM",
+                            "farm_id": fid, "source": "Guava Sale", "description": "Mandi sale", "created_at": now_utc(), "created_by": "seed"})
+                for cat, amt, day in [("Fertilizer", 12000, 4), ("Labour", 18000, 8), ("Irrigation", 6000, 15), ("Pesticide", 8000, 20)]:
+                    ftx.append({"type": "EXPENSE", "date": f"{mk}-{day:02d}", "amount": amt - i * 1000, "scope": "FARM",
+                                "farm_id": fid, "category": cat, "description": f"{cat}", "created_at": now_utc(), "created_by": "seed"})
+        await db.transactions.insert_many(ftx)
+
+    # ---- project work logs + official/unofficial gov charges ----
+    if await db.work_logs.count_documents({}) == 0:
+        proj = await db.projects.find_one({"name": "Skyline Heights Residence"})
+        if proj:
+            pid = str(proj["_id"])
+            await db.work_logs.insert_many([
+                {"project_id": pid, "date": d(150), "title": "Site excavation & foundation", "party": "BuildRight Civil",
+                 "status": "COMPLETED", "progress": 100, "description": "Excavation and PCC done.", "photos": [], "created_at": now_utc()},
+                {"project_id": pid, "date": d(90), "title": "Ground floor slab casting", "party": "BuildRight Civil",
+                 "status": "COMPLETED", "progress": 100, "description": "GF slab cast and cured.", "photos": [], "created_at": now_utc()},
+                {"project_id": pid, "date": d(30), "title": "First floor brickwork", "party": "BuildRight Civil",
+                 "status": "IN_PROGRESS", "progress": 60, "description": "Brickwork ongoing.", "photos": [], "created_at": now_utc()},
+                {"project_id": pid, "date": d(5), "title": "Electrical conduiting", "party": "Voltas Electricals",
+                 "status": "IN_PROGRESS", "progress": 40, "description": "Conduits being laid.", "photos": [], "created_at": now_utc()},
+            ])
+            await db.transactions.insert_many([
+                {"type": "EXPENSE", "date": d(120), "amount": 320000, "scope": "PROJECT", "project_id": pid,
+                 "category": "Government", "party": "Municipal Corporation", "official": True, "payment_class": "OFFICIAL",
+                 "description": "Building plan sanction fees (receipt)", "created_at": now_utc(), "created_by": "seed"},
+                {"type": "EXPENSE", "date": d(118), "amount": 90000, "scope": "PROJECT", "project_id": pid,
+                 "category": "Government", "party": "Facilitation", "official": False, "payment_class": "UNOFFICIAL",
+                 "description": "Approval facilitation (cash)", "created_at": now_utc(), "created_by": "seed"},
+            ])

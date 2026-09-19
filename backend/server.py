@@ -32,9 +32,13 @@ from api_projects import router as projects_router
 from api_admin import router as admin_router
 from api_dashboard import router as dashboard_router
 from api_documents import router as documents_router
+from api_insurance import router as insurance_router
+from api_farms import router as farms_router
+from api_loans import router as loans_router
 
 for r in (auth_router, finance_router, lending_router, wealth_router, rental_router,
-          projects_router, admin_router, dashboard_router, documents_router):
+          projects_router, admin_router, dashboard_router, documents_router,
+          insurance_router, farms_router, loans_router):
     api.include_router(r)
 
 app.include_router(api)
@@ -83,7 +87,8 @@ async def startup():
     except Exception as e:
         logger.warning("Storage init failed (uploads may not work yet): %s", e)
     try:
-        from seed import seed_demo
+        from seed import seed_demo, seed_v2
         await seed_demo()
+        await seed_v2()
     except Exception as e:
         logger.warning("Demo seed skipped: %s", e)

@@ -1,24 +1,28 @@
 import React, { useRef, useState } from "react";
-import { Upload, FileText, Download, Trash2, File } from "lucide-react";
-import { Card, Button, StateBlock, Select, Field, Input, Modal, Badge } from "./ui";
+import { Upload, FileText, Download, Trash2, File, Pencil, ShieldCheck, ShieldOff } from "lucide-react";
+import { Card, Button, StateBlock, Select, Field, Input, Modal, Badge, cx } from "./ui";
 import { useFetch } from "../lib/useFetch";
-import api, { apiError, API, authToken } from "../lib/api";
+import api, { apiError, docUrl } from "../lib/api";
 import { fmtDate } from "../lib/format";
 
-const CATS = ["Project", "Bank", "Payment", "Contract", "Invoice", "Receipt", "Drawing", "Certificate", "Other"];
+const DEFAULT_CATS = ["Project", "Bank", "Payment", "Contract", "Invoice", "Receipt", "Drawing", "Certificate", "ITR", "Income Tax", "Income Proof", "Identity", "Property", "Insurance", "Other"];
 
-export default function DocumentsPanel({ projectId, title = "Documents", compact = false }) {
-  const url = projectId ? `/documents?related_entity_id=${projectId}` : "/documents";
-  const { data, loading, error, refetch } = useFetch(url, [projectId]);
+export default function DocumentsPanel({ projectId, title = "Documents", query = "", categories, memberOptions, showOfficial = false, showTaxFields = false, defaultCategory = "Other", onChanged }) {
+  const base = projectId ? `/documents?related_entity_id=${projectId}` : "/documents";
+  const url = query ? `${base}${base.includes("?") ? "&" : "?"}${query}` : base;
+  const { data, loading, error, refetch } = useFetch(url, [url]);
   const fileRef = useRef();
+  const cats = categories || DEFAULT_CATS;
   const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ category: defaultCategory, official: "true" });
   const [file, setFile] = useState(null);
-  const [category, setCategory] = useState("Other");
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [rename, setRename] = useState(null);
+  const [renameVal, setRenameVal] = useState("");
 
   const docs = data || [];
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const upload = async () => {
     if (!file) { setErr("Choose a file first"); return; }
@@ -26,38 +30,47 @@ export default function DocumentsPanel({ projectId, title = "Documents", compact
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("category", category);
-      fd.append("notes", notes);
+      fd.append("category", form.category || "Other");
+      if (form.display_name) fd.append("display_name", form.display_name);
+      if (form.notes) fd.append("notes", form.notes);
+      if (showOfficial) fd.append("official", form.official || "true");
+      if (showTaxFields && form.financial_year) fd.append("financial_year", form.financial_year);
+      if (memberOptions && form.family_member_id) fd.append("family_member_id", form.family_member_id);
       if (projectId) { fd.append("related_entity_id", projectId); fd.append("related_entity_type", "project"); fd.append("project_id", projectId); }
       await api.post("/documents", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      setOpen(false); setFile(null); setNotes(""); refetch();
+      setOpen(false); setFile(null); setForm({ category: defaultCategory, official: "true" });
+      refetch(); onChanged && onChanged();
     } catch (e) { setErr(apiError(e)); } finally { setBusy(false); }
   };
 
-  const download = (d) => {
-    const link = `${API}/documents/${d.id}/download?auth=${encodeURIComponent(authToken())}`;
-    window.open(link, "_blank");
+  const doRename = async () => {
+    await api.put(`/documents/${rename.id}`, { filename: renameVal });
+    setRename(null); refetch();
   };
-  const del = async (d) => { if (window.confirm(`Delete ${d.filename}?`)) { await api.delete(`/documents/${d.id}`); refetch(); } };
+  const download = (dc) => window.open(docUrl(dc.id), "_blank");
+  const del = async (dc) => { if (window.confirm(`Delete ${dc.filename}?`)) { await api.delete(`/documents/${dc.id}`); refetch(); onChanged && onChanged(); } };
 
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-line">
         <h3 className="font-display font-semibold text-ink">{title}</h3>
-        <Button size="sm" onClick={() => { setErr(""); setFile(null); setOpen(true); }} data-testid="upload-doc"><Upload size={15} /> Upload</Button>
+        <Button size="sm" onClick={() => { setErr(""); setFile(null); setForm({ category: defaultCategory, official: "true" }); setOpen(true); }} data-testid="upload-doc"><Upload size={15} /> Upload</Button>
       </div>
       <StateBlock loading={loading} error={error} empty={docs.length === 0} emptyText="No documents uploaded yet." onRetry={refetch}>
         <div className="divide-y divide-line">
-          {docs.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors">
+          {docs.map((dc) => (
+            <div key={dc.id} className="flex items-center gap-3 px-5 py-3 hover:bg-muted/40 transition-colors">
               <span className="w-9 h-9 rounded-lg bg-brand-light text-brand flex items-center justify-center shrink-0"><FileText size={17} /></span>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium text-ink truncate">{d.filename}</div>
-                <div className="text-xs text-faint">{fmtDate(d.created_at)} · {(d.size / 1024).toFixed(0)} KB</div>
+                <div className="text-sm font-medium text-ink truncate">{dc.filename}</div>
+                <div className="text-xs text-faint">{fmtDate(dc.created_at)} · {(dc.size / 1024).toFixed(0)} KB {dc.financial_year ? `· FY ${dc.financial_year}` : ""}</div>
               </div>
-              <Badge tone="gray">{d.category}</Badge>
-              <button onClick={() => download(d)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`download-${d.id}`}><Download size={16} /></button>
-              <button onClick={() => del(d)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-expense"><Trash2 size={16} /></button>
+              {dc.official === true && <Badge tone="blue"><ShieldCheck size={11} /> official</Badge>}
+              {dc.official === false && <Badge tone="amber"><ShieldOff size={11} /> unofficial</Badge>}
+              <Badge tone="gray">{dc.category}</Badge>
+              <button onClick={() => { setRename(dc); setRenameVal((dc.filename || "").replace(/\.[^.]+$/, "")); }} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`rename-${dc.id}`}><Pencil size={15} /></button>
+              <button onClick={() => download(dc)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`download-${dc.id}`}><Download size={16} /></button>
+              <button onClick={() => del(dc)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-expense"><Trash2 size={16} /></button>
             </div>
           ))}
         </div>
@@ -71,11 +84,22 @@ export default function DocumentsPanel({ projectId, title = "Documents", compact
             <div className="text-sm text-ink font-medium">{file ? file.name : "Click to choose a file"}</div>
             <div className="text-xs text-faint mt-1">PDF, images, spreadsheets · max 25MB</div>
           </div>
-          <Field label="Category"><Select value={category} onChange={(e) => setCategory(e.target.value)}>{CATS.map((c) => <option key={c}>{c}</option>)}</Select></Field>
-          <Field label="Notes"><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+          <Field label="Rename file (optional — format is kept)"><Input value={form.display_name || ""} onChange={(e) => set("display_name", e.target.value)} placeholder="e.g. ICICI Statement Sep 2026" data-testid="doc-name" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Category"><Select value={form.category} onChange={(e) => set("category", e.target.value)} data-testid="doc-category">{cats.map((c) => <option key={c}>{c}</option>)}</Select></Field>
+            {showOfficial && <Field label="Paperwork Type"><Select value={form.official} onChange={(e) => set("official", e.target.value)} data-testid="doc-official"><option value="true">Official</option><option value="false">Unofficial</option></Select></Field>}
+            {showTaxFields && <Field label="Financial Year"><Input value={form.financial_year || ""} onChange={(e) => set("financial_year", e.target.value)} placeholder="2025-26" /></Field>}
+            {memberOptions && <Field label="Belongs To"><Select value={form.family_member_id || ""} onChange={(e) => set("family_member_id", e.target.value)}><option value="">Self</option>{memberOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</Select></Field>}
+          </div>
+          <Field label="Notes"><Input value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} /></Field>
           {err && <div className="text-sm text-expense bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</div>}
           <div className="flex gap-2 pt-1"><Button variant="secondary" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button><Button className="flex-1" onClick={upload} disabled={busy} data-testid="upload-submit">{busy ? "Uploading…" : "Upload"}</Button></div>
         </div>
+      </Modal>
+
+      <Modal open={!!rename} onClose={() => setRename(null)} title="Rename document" size="sm">
+        <Field label="New name (extension kept automatically)"><Input autoFocus value={renameVal} onChange={(e) => setRenameVal(e.target.value)} data-testid="rename-input" /></Field>
+        <div className="flex gap-2 pt-4"><Button variant="secondary" className="flex-1" onClick={() => setRename(null)}>Cancel</Button><Button className="flex-1" onClick={doRename} data-testid="rename-save">Save</Button></div>
       </Modal>
     </Card>
   );

@@ -32,4 +32,5 @@ export function apiError(err) {
 }
 
 export const authToken = () => localStorage.getItem("nivara_token");
+export const docUrl = (id) => `${API}/documents/${id}/download?auth=${encodeURIComponent(authToken() || "")}`;
 export default api;

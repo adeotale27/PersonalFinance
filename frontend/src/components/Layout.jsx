@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, TrendingUp, CreditCard, Handshake,
   PiggyBank, ShieldCheck, Building2, Scale, FolderKanban, Users, KeyRound,
-  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert,
+  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout,
 } from "lucide-react";
 import { cx } from "./ui";
 import { useAuth } from "../lib/auth";
@@ -21,13 +21,18 @@ const NAV = [
       { name: "Lending & Borrowing", path: "/lending", icon: Handshake, tid: "nav-lending" },
       { name: "Savings & Investments", path: "/savings", icon: PiggyBank, tid: "nav-savings" },
       { name: "PF & PPF", path: "/pf-ppf", icon: ShieldCheck, tid: "nav-pf-ppf" },
+      { name: "Loans", path: "/loans", icon: Landmark, tid: "nav-loans" },
+      { name: "Insurance", path: "/insurance", icon: Umbrella, tid: "nav-insurance" },
       { name: "Rental Income", path: "/rental", icon: Building2, tid: "nav-rental" },
       { name: "Net Worth", path: "/net-worth", icon: Scale, tid: "nav-net-worth" },
     ],
   },
   {
-    group: "Projects",
-    items: [{ name: "All Projects", path: "/projects", icon: FolderKanban, tid: "nav-projects" }],
+    group: "Projects & Farms",
+    items: [
+      { name: "All Projects", path: "/projects", icon: FolderKanban, tid: "nav-projects" },
+      { name: "Farms & Farming", path: "/farms", icon: Sprout, tid: "nav-farms" },
+    ],
   },
   {
     group: "Governance & Admin",

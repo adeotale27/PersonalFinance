@@ -139,3 +139,37 @@ async def update_party(item_id: str, payload: dict, user: dict = Depends(require
 async def delete_party(item_id: str, user: dict = Depends(require_admin)):
     await db.parties.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
     return {"status": "deleted"}
+
+
+# ---------------- work logs ----------------
+@router.get("/work-logs")
+async def list_work_logs(project_id: str = None, user: dict = Depends(require_admin)):
+    q = {"deleted_at": {"$exists": False}}
+    if project_id:
+        q["project_id"] = project_id
+    docs = await db.work_logs.find(q).sort([("date", -1)]).to_list(2000)
+    return [serialize(d) for d in docs]
+
+
+@router.post("/work-logs")
+async def create_work_log(payload: dict, user: dict = Depends(require_admin)):
+    payload.setdefault("status", "IN_PROGRESS")
+    payload.setdefault("photos", [])
+    payload.setdefault("date", now_utc().date().isoformat())
+    payload["created_at"] = now_utc()
+    res = await db.work_logs.insert_one(payload)
+    return serialize(await db.work_logs.find_one({"_id": res.inserted_id}))
+
+
+@router.put("/work-logs/{item_id}")
+async def update_work_log(item_id: str, payload: dict, user: dict = Depends(require_admin)):
+    payload.pop("id", None); payload.pop("_id", None)
+    payload["updated_at"] = now_utc()
+    await db.work_logs.update_one({"_id": oid(item_id)}, {"$set": payload})
+    return serialize(await db.work_logs.find_one({"_id": oid(item_id)}))
+
+
+@router.delete("/work-logs/{item_id}")
+async def delete_work_log(item_id: str, user: dict = Depends(require_admin)):
+    await db.work_logs.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    return {"status": "deleted"}

@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin } from "lucide-react";
+import { ArrowLeft, MapPin, Camera } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { StateBlock, Card, Badge, StatusBadge, Segmented, Spinner } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, Bars, CashFlowArea, Donut } from "../components/charts";
 import CrudManager from "../components/CrudManager";
 import DocumentsPanel from "../components/DocumentsPanel";
+import api, { docUrl } from "../lib/api";
 import { inr } from "../lib/format";
 
 export default function ProjectWorkspace() {
@@ -17,9 +18,26 @@ export default function ProjectWorkspace() {
   const finance = useFetch(`/projects/${id}/finance`, [id]);
   const accounts = useFetch("/accounts");
   const settings = useFetch("/settings");
+  const photoRef = useRef();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const p = project.data;
   const f = finance.data;
+  const heroImg = p ? (p.image_url || (p.image_doc_id ? docUrl(p.image_doc_id) : null)) : null;
+
+  const uploadPhoto = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPhoto(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file); fd.append("category", "Project Photo");
+      fd.append("related_entity_id", id); fd.append("related_entity_type", "project"); fd.append("project_id", id);
+      const { data } = await api.post("/documents", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      await api.put(`/projects/${id}`, { image_doc_id: data.id, image_url: "" });
+      project.refetch();
+    } catch (_) {} finally { setUploadingPhoto(false); }
+  };
 
   const partyFields = [
     { key: "name", label: "Party Name", required: true, full: true },
@@ -41,6 +59,7 @@ export default function ProjectWorkspace() {
     { key: "amount", label: "Amount (₹)", type: "money", required: true },
     { key: "category", label: "Category", type: "select", options: settings.data.project_categories || [], required: true },
     { key: "party", label: "Paid To (party)" },
+    { key: "payment_class", label: "Payment Type", type: "select", options: [{ value: "OFFICIAL", label: "Official (on record)" }, { value: "UNOFFICIAL", label: "Unofficial (cash)" }], default: "OFFICIAL" },
     { key: "account_id", label: "From Account", type: "select", options: (accounts.data || []).map((a) => ({ value: a.id, label: a.name })) },
     { key: "description", label: "Description", full: true },
   ] : null;
@@ -48,8 +67,25 @@ export default function ProjectWorkspace() {
     { key: "date", label: "Date", type: "date" },
     { key: "category", label: "Category", render: (r) => <Badge tone="brand">{r.category}</Badge> },
     { key: "party", label: "Paid To" },
+    { key: "payment_class", label: "Type", render: (r) => <Badge tone={r.payment_class === "UNOFFICIAL" ? "amber" : "blue"}>{(r.payment_class || "OFFICIAL").toLowerCase()}</Badge> },
     { key: "description", label: "Note", render: (r) => <span className="text-subink">{r.description || "—"}</span> },
     { key: "amount", label: "Amount", align: "right", render: (r) => <span className="num font-semibold text-expense">{inr(r.amount)}</span> },
+  ];
+
+  const workFields = [
+    { key: "date", label: "Date", type: "date", required: true },
+    { key: "title", label: "Work Item", required: true, full: true },
+    { key: "party", label: "Done By (party)" },
+    { key: "status", label: "Status", type: "select", options: ["PLANNED", "IN_PROGRESS", "COMPLETED", "ON_HOLD"], default: "IN_PROGRESS" },
+    { key: "progress", label: "Progress %", type: "number" },
+    { key: "description", label: "Details", type: "textarea", full: true },
+  ];
+  const workCols = [
+    { key: "date", label: "Date", type: "date" },
+    { key: "title", label: "Work", render: (r) => <div><div className="font-medium text-ink">{r.title}</div><div className="text-xs text-faint">{r.description}</div></div> },
+    { key: "party", label: "By" },
+    { key: "progress", label: "Progress", render: (r) => <div className="w-24"><div className="h-2 rounded-full bg-muted overflow-hidden"><div className="h-full bg-brand rounded-full" style={{ width: `${r.progress || 0}%` }} /></div><div className="text-[10px] text-faint mt-0.5 num">{r.progress || 0}%</div></div> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
   ];
 
   return (
@@ -59,8 +95,13 @@ export default function ProjectWorkspace() {
           <button onClick={() => nav("/projects")} className="flex items-center gap-1.5 text-sm text-subink hover:text-ink mb-4" data-testid="back-projects"><ArrowLeft size={16} /> All projects</button>
           <Card className="overflow-hidden mb-6">
             <div className="h-40 sm:h-52 bg-muted relative">
-              {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />}
+              {heroImg && <img src={heroImg} alt={p.name} className="w-full h-full object-cover" />}
               <div className="absolute inset-0 bg-gradient-to-t from-ink/70 to-transparent" />
+              <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={uploadPhoto} data-testid="project-photo-input" />
+              <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto} data-testid="project-photo-btn"
+                className="absolute top-3 right-3 inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-white/90 text-ink text-xs font-semibold hover:bg-white transition-colors">
+                <Camera size={14} /> {uploadingPhoto ? "Uploading…" : "Change photo"}
+              </button>
               <div className="absolute bottom-4 left-5 right-5 text-white">
                 <div className="flex items-center gap-2 mb-1"><Badge tone="brand">{p.type}</Badge><StatusBadge status={p.status} /></div>
                 <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">{p.name}</h1>
@@ -71,7 +112,7 @@ export default function ProjectWorkspace() {
 
           <div className="mb-6 overflow-x-auto -mx-1 px-1">
             <Segmented testid="proj-tabs" value={tab} onChange={setTab}
-              options={[{ value: "overview", label: "Overview" }, { value: "finance", label: "Finance" }, { value: "parties", label: "Parties" }, { value: "documents", label: "Documents" }]} />
+              options={[{ value: "overview", label: "Overview" }, { value: "finance", label: "Finance" }, { value: "work", label: "Work" }, { value: "parties", label: "Parties" }, { value: "documents", label: "Documents" }]} />
           </div>
 
           {!f ? <div className="py-10 flex justify-center"><Spinner className="w-6 h-6 text-brand" /></div> : (
@@ -110,13 +151,19 @@ export default function ProjectWorkspace() {
                   transform={(x) => ({ ...x, type: "EXPENSE", scope: "PROJECT", project_id: id })} deps={[id]} />
               )}
 
+              {tab === "work" && (
+                <CrudManager title="Work Progress" endpoint="/work-logs" listEndpoint={`/work-logs?project_id=${id}`}
+                  addLabel="Log work" fields={workFields} columns={workCols}
+                  transform={(x) => ({ ...x, project_id: id })} deps={[id]} />
+              )}
+
               {tab === "parties" && (
                 <CrudManager title="Parties & Vendors" endpoint="/parties" listEndpoint={`/parties?project_id=${id}`}
                   addLabel="Add party" fields={partyFields} columns={partyCols} onChanged={finance.refetch}
                   transform={(x) => ({ ...x, project_id: id })} deps={[id]} />
               )}
 
-              {tab === "documents" && <DocumentsPanel projectId={id} title="Project Documents" />}
+              {tab === "documents" && <DocumentsPanel projectId={id} title="Project Documents (Official & Unofficial)" showOfficial defaultCategory="Project" />}
             </>
           )}
         </>

@@ -9,12 +9,14 @@ import { inr } from "../lib/format";
 
 export default function PfPpf() {
   const { data: s, loading, error, refetch } = useFetch("/pf-ppf/summary");
+  const family = useFetch("/family");
+  const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
   const fields = [
     { key: "kind", label: "Type", type: "select", options: ["PF", "PPF"], default: "PF", required: true },
     { key: "institution", label: "Institution", placeholder: "EPFO / SBI", required: true },
     { key: "account_number", label: "Account No. (masked)" },
-    { key: "owner", label: "Owner", default: "Self" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
     { key: "opening_balance", label: "Opening Balance (₹)", type: "money", default: 0 },
     { key: "current_balance", label: "Current Balance (₹)", type: "money", required: true },
     { key: "maturity_date", label: "Maturity Date", type: "date" },

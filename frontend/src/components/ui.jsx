@@ -43,6 +43,16 @@ export function Field({ label, children, className }) {
 const inputCls = "w-full h-10 px-3 rounded-lg border border-line bg-white text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand transition";
 
 export function Input({ className, ...p }) { return <input className={cx(inputCls, className)} {...p} />; }
+
+export function DatalistInput({ options = [], listId, className, ...p }) {
+  const id = listId || `dl-${Math.random().toString(36).slice(2)}`;
+  return (
+    <>
+      <input list={id} className={cx(inputCls, className)} {...p} />
+      <datalist id={id}>{options.map((o) => <option key={o} value={o} />)}</datalist>
+    </>
+  );
+}
 export function Textarea({ className, ...p }) { return <textarea className={cx(inputCls, "h-auto py-2 min-h-[76px]", className)} {...p} />; }
 export function Select({ className, children, ...p }) {
   return <select className={cx(inputCls, "appearance-none bg-no-repeat pr-8", className)}

@@ -14,12 +14,16 @@ MAX_SIZE = 25 * 1024 * 1024
 
 
 @router.get("/documents")
-async def list_documents(category: str = None, related_entity_id: str = None, user: dict = Depends(require_admin)):
+async def list_documents(category: str = None, related_entity_id: str = None, folder: str = None,
+                         financial_year: str = None, family_member_id: str = None, project_id: str = None,
+                         user: dict = Depends(require_admin)):
     q = {"deleted_at": {"$exists": False}}
-    if category:
-        q["category"] = category
-    if related_entity_id:
-        q["related_entity_id"] = related_entity_id
+    if category: q["category"] = category
+    if related_entity_id: q["related_entity_id"] = related_entity_id
+    if folder: q["folder"] = folder
+    if financial_year: q["financial_year"] = financial_year
+    if family_member_id: q["family_member_id"] = family_member_id
+    if project_id: q["project_id"] = project_id
     docs = await db.documents.find(q).sort([("created_at", -1)]).to_list(1000)
     return [serialize(d) for d in docs]
 
@@ -28,9 +32,14 @@ async def list_documents(category: str = None, related_entity_id: str = None, us
 async def upload_document(
     file: UploadFile = File(...),
     category: str = Form("Other"),
+    folder: str = Form(None),
+    official: str = Form(None),
+    financial_year: str = Form(None),
     related_entity_type: str = Form(None),
     related_entity_id: str = Form(None),
     project_id: str = Form(None),
+    family_member_id: str = Form(None),
+    display_name: str = Form(None),
     notes: str = Form(""),
     user: dict = Depends(require_admin),
 ):
@@ -43,14 +52,22 @@ async def upload_document(
     path = f"nivara/uploads/{uuid.uuid4().hex}.{ext}"
     content_type = file.content_type or "application/octet-stream"
     result = put_object(path, content, content_type)
+    base = display_name or file.filename
+    if display_name and ext and not display_name.lower().endswith("." + ext):
+        base = f"{display_name}.{ext}"
     doc = {
-        "filename": file.filename,
+        "filename": base,
+        "ext": ext,
         "content_type": content_type,
         "size": result.get("size", len(content)),
         "category": category,
+        "folder": folder,
+        "official": (official == "true") if official is not None else None,
+        "financial_year": financial_year,
         "related_entity_type": related_entity_type,
         "related_entity_id": related_entity_id,
         "project_id": project_id,
+        "family_member_id": family_member_id,
         "storage_path": result["path"],
         "notes": notes,
         "uploaded_by": user["email"],
@@ -58,6 +75,28 @@ async def upload_document(
     }
     res = await db.documents.insert_one(doc)
     return serialize(await db.documents.find_one({"_id": res.inserted_id}))
+
+
+@router.put("/documents/{item_id}")
+async def rename_document(item_id: str, payload: dict, user: dict = Depends(require_admin)):
+    doc = await db.documents.find_one({"_id": oid(item_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    update = {}
+    if "filename" in payload and payload["filename"]:
+        name = payload["filename"]
+        ext = doc.get("ext")
+        if ext and "." not in name:
+            name = f"{name}.{ext}"
+        elif ext and not name.lower().endswith("." + ext):
+            name = f"{name.rsplit('.', 1)[0]}.{ext}"
+        update["filename"] = name
+    for k in ("category", "folder", "notes", "financial_year", "official"):
+        if k in payload:
+            update[k] = payload[k]
+    update["updated_at"] = now_utc()
+    await db.documents.update_one({"_id": oid(item_id)}, {"$set": update})
+    return serialize(await db.documents.find_one({"_id": oid(item_id)}))
 
 
 @router.get("/documents/{item_id}/download")

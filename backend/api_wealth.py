@@ -106,6 +106,8 @@ async def networth_data():
     property_assets = _sum(asset_docs, "current_value")
     liab_docs = [serialize(d) for d in await liab_coll.find({"deleted_at": {"$exists": False}}).to_list(2000)]
     liabilities = _sum(liab_docs, "outstanding")
+    loan_docs = [serialize(d) for d in await db.loans.find({"deleted_at": {"$exists": False}}).to_list(500)]
+    loans_out = _sum(loan_docs, "outstanding")
     # borrowing outstanding
     borrow = [d for d in await db.lendings.find({"direction": "BORROWED", "deleted_at": {"$exists": False}}).to_list(2000)]
     borrow_out = 0.0
@@ -124,7 +126,7 @@ async def networth_data():
     lend_out = round2(lend_out)
 
     total_assets = round2(bank + cash + savings + pf + investments + property_assets + lend_out)
-    total_liabilities = round2(liabilities + borrow_out)
+    total_liabilities = round2(liabilities + borrow_out + loans_out)
     return {
         "net_worth": round2(total_assets - total_liabilities),
         "total_assets": total_assets,
@@ -133,7 +135,7 @@ async def networth_data():
             "bank": bank, "cash": cash, "savings": savings, "pf_ppf": pf,
             "investments": investments, "property": property_assets, "receivables": lend_out,
         },
-        "liability_breakdown": {"loans": liabilities, "borrowings": borrow_out},
+        "liability_breakdown": {"loans": round2(liabilities + loans_out), "borrowings": borrow_out},
         "allocation": [
             {"name": "Bank", "value": bank}, {"name": "Cash", "value": cash},
             {"name": "Savings", "value": savings}, {"name": "PF/PPF", "value": pf},

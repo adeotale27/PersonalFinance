@@ -18,14 +18,25 @@ export default function Overview() {
     <StateBlock loading={loading} error={error} onRetry={refetch}>
       {data && (
         <>
-          <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
-            <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">Financial Overview</h1>
-              <p className="text-sm text-subink mt-0.5">Your complete money picture at a glance.</p>
-            </div>
-            <div className="text-right">
-              <div className="overline text-faint">Net Worth</div>
-              <div className="num font-bold text-2xl text-brand">{inr(data.net_worth)}</div>
+          <div className="relative overflow-hidden rounded-2xl mb-6 p-6 sm:p-7 bg-gradient-to-br from-brand-dark via-brand to-teal-600 text-white shadow-pop">
+            <div className="absolute inset-0 opacity-[0.12]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
+            <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full bg-white/10 blur-2xl" />
+            <div className="relative flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="overline text-teal-100/80">Total Net Worth</div>
+                <div className="num font-extrabold text-4xl sm:text-5xl tracking-tight mt-1">{inr(data.net_worth)}</div>
+                <div className="flex items-center gap-4 mt-3 text-sm text-teal-50/90">
+                  <span>Assets <span className="num font-semibold text-white">{inr(data.total_assets, { compact: true })}</span></span>
+                  <span className="w-px h-4 bg-white/20" />
+                  <span>Liabilities <span className="num font-semibold text-white">{inr(data.total_liabilities, { compact: true })}</span></span>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="text-right px-4 py-2 rounded-xl bg-white/10 backdrop-blur">
+                  <div className="overline text-teal-100/80">Saved this month</div>
+                  <div className="num font-bold text-xl">{inr(data.month_savings, { compact: true })}</div>
+                </div>
+              </div>
             </div>
           </div>
 

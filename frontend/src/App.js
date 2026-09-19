@@ -12,6 +12,9 @@ import Expenses from "./pages/Expenses";
 import Lending from "./pages/Lending";
 import Savings from "./pages/Savings";
 import PfPpf from "./pages/PfPpf";
+import Loans from "./pages/Loans";
+import Insurance from "./pages/Insurance";
+import Farms from "./pages/Farms";
 import Rental from "./pages/Rental";
 import NetWorth from "./pages/NetWorth";
 import Projects from "./pages/Projects";
@@ -41,6 +44,9 @@ function Shell() {
       <Route path="/lending" element={<Protected><Lending /></Protected>} />
       <Route path="/savings" element={<Protected><Savings /></Protected>} />
       <Route path="/pf-ppf" element={<Protected><PfPpf /></Protected>} />
+      <Route path="/loans" element={<Protected><Loans /></Protected>} />
+      <Route path="/insurance" element={<Protected><Insurance /></Protected>} />
+      <Route path="/farms" element={<Protected><Farms /></Protected>} />
       <Route path="/rental" element={<Protected><Rental /></Protected>} />
       <Route path="/net-worth" element={<Protected><NetWorth /></Protected>} />
       <Route path="/projects" element={<Protected><Projects /></Protected>} />

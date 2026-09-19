@@ -10,6 +10,8 @@ import { inr, todayISO } from "../lib/format";
 export default function Savings() {
   const { data: s, loading, error, refetch } = useFetch("/savings/summary");
   const invSummary = useFetch("/investments");
+  const family = useFetch("/family");
+  const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
   const invTotal = (invSummary.data || []).reduce((a, i) => a + (i.current_value || 0), 0);
   const invCost = (invSummary.data || []).reduce((a, i) => a + (i.cost || 0), 0);
@@ -18,7 +20,7 @@ export default function Savings() {
     { key: "name", label: "Name", required: true, full: true },
     { key: "type", label: "Type", type: "select", options: ["SAVINGS", "FD", "RD", "CASH", "OTHER"], default: "SAVINGS", required: true },
     { key: "institution", label: "Institution" },
-    { key: "owner", label: "Owner", default: "Self" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
     { key: "interest_rate", label: "Interest %", type: "number" },
     { key: "start_date", label: "Start Date", type: "date" },
@@ -38,7 +40,7 @@ export default function Savings() {
     { key: "type", label: "Type", type: "select", options: ["Stocks", "Mutual Fund", "Bonds", "Deposits", "Gold", "Crypto", "Other"], default: "Mutual Fund" },
     { key: "cost", label: "Invested (₹)", type: "money", required: true },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
-    { key: "owner", label: "Owner", default: "Self" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
   ];
   const invCols = [
     { key: "name", label: "Investment", render: (r) => <span className="font-medium text-ink">{r.name}</span> },

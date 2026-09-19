@@ -84,6 +84,19 @@ async def overview(user: dict = Depends(require_admin)):
     audits = await db.audit_events.find({}).sort([("timestamp", -1)]).to_list(12)
     recent = [serialize(a) for a in audits]
 
+    from datetime import date as _date
+    ins = await db.insurance.find({"deleted_at": {"$exists": False}}).to_list(500)
+    for pol in ins:
+        rd = pol.get("renewal_date")
+        if rd:
+            try:
+                y, m, dd = [int(x) for x in rd[:10].split("-")]
+                days = (_date(y, m, dd) - now.date()).days
+                if 0 <= days <= 60:
+                    attention.append({"type": "insurance_renewal", "label": f"{pol.get('policy_name')} renewal in {days}d", "value": round2(pol.get("premium", 0)), "path": "/insurance"})
+            except Exception:
+                pass
+
     return {
         "net_worth": nw["net_worth"],
         "total_assets": nw["total_assets"],
