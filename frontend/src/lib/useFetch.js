@@ -9,15 +9,23 @@ export function useFetch(url, deps = []) {
   const urlRef = useRef(url);
   urlRef.current = url;
 
-  const refetch = useCallback(() => {
-    setLoading(true);
-    return api.getCached(urlRef.current)
+  const refetch = useCallback((background = false) => {
+    if (!background) setLoading(true);
+    return api.getCached(urlRef.current, background ? { force: true } : {})
       .then((r) => { setData(r.data); setError(null); })
       .catch((e) => setError(e))
-      .finally(() => setLoading(false));
+      .finally(() => { if (!background) setLoading(false); });
   }, []);
 
-  useEffect(() => { refetch(); /* eslint-disable-next-line */ }, deps);
+  useEffect(() => {
+    refetch();
+    const refresh = () => refetch(true);
+    window.addEventListener("nivara:data-changed", refresh);
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => { window.removeEventListener("nivara:data-changed", refresh); window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+    /* eslint-disable-next-line */
+  }, deps);
 
   return { data, loading, error, refetch, setData };
 }

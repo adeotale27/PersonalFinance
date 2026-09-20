@@ -11,6 +11,25 @@ def days_until(value):
     try: return (date.fromisoformat(str(value)[:10]) - now_utc().date()).days
     except (ValueError, TypeError): return None
 
+
+def action_for(alert: dict) -> dict:
+    """Give the UI a safe, explicit destination for fixing this alert."""
+    kind, source = alert.get("kind"), alert.get("source", "")
+    if kind == "RENT_DUE":
+        return {"label": "Record collection", "path": f"/rental?payment={source}"}
+    if kind == "FARM_RENT_DUE":
+        return {"label": "Record collection", "path": f"/farms?payment={source}"}
+    if kind in ("LENDING_OVERDUE", "BORROWING_OVERDUE"):
+        tab = "BORROWED" if kind == "BORROWING_OVERDUE" else "LENT"
+        return {"label": "Record repayment", "path": f"/lending?tab={tab}&focus={source}"}
+    if kind == "LOAN_PAYMENT":
+        return {"label": "Update loan", "path": f"/loans?focus={source}"}
+    if kind.endswith("_CONTRIBUTION"):
+        return {"label": "Update contribution", "path": f"/pf-ppf?focus={source}"}
+    if kind == "CUSTOM_REMINDER":
+        return {"label": "Review reminder", "path": "/notifications"}
+    return {"label": "Review details", "path": "/notifications"}
+
 async def upsert_alert(kind, title, message, due_date=None, amount=None, source=None, severity="info"):
     fingerprint = f"{kind}:{source or title}:{due_date or ''}"
     data = {"kind": kind, "title": title, "message": message, "due_date": due_date, "amount": round2(amount), "source": source or "", "severity": severity, "fingerprint": fingerprint, "updated_at": now_utc()}
@@ -51,22 +70,21 @@ async def refresh_notifications():
 async def notifications(status: str = "OPEN", user: dict = Depends(require_admin)):
     await refresh_notifications(); query = {} if status == "ALL" else {"status": status}
     docs = await db.notifications.find(query).sort([("status", 1), ("due_date", 1), ("created_at", -1)]).to_list(1000)
-    return {"count": len(docs), "items": [serialize(x) for x in docs]}
+    items = []
+    for item in docs:
+        result = serialize(item)
+        result["action"] = action_for(item)
+        items.append(result)
+    return {"count": len(items), "items": items}
 
 @router.post("/notifications/{item_id}/acknowledge")
 async def acknowledge_notification(item_id: str, user: dict = Depends(require_admin)):
     alert = await db.notifications.find_one({"_id": oid(item_id)})
     if not alert: raise HTTPException(status_code=404, detail="Notification not found")
-    # Collection alerts are actionable: acknowledgement records the outstanding receipt,
-    # while all other alerts are simply marked as reviewed.
-    if alert.get("kind") in ("RENT_DUE", "FARM_RENT_DUE") and alert.get("source"):
-        collection = db.rent_payments if alert["kind"] == "RENT_DUE" else db.farm_rent_payments
-        payment = await collection.find_one({"_id": oid(alert["source"]), "deleted_at": {"$exists": False}})
-        if payment:
-            received = round2(payment.get("amount_received", 0) + alert.get("amount", 0))
-            due = round2(payment.get("amount_due", 0))
-            status = "COLLECTED" if received >= due else "PARTIAL"
-            await collection.update_one({"_id": payment["_id"]}, {"$set": {"amount_received": received, "status": status, "acknowledged_at": now_utc(), "acknowledged_by": user.get("email"), "updated_at": now_utc()}})
+    # Acknowledgement is deliberately separate from a financial change.  The
+    # action button takes the user to the original record to enter the actual
+    # payment/repayment, preventing an accidental acknowledgement from marking
+    # money as collected.
     # Older installs can contain duplicate alerts from a prior source-date
     # change. Acknowledging one must clear every open copy of that same action
     # from the bell; a materially changed due/amount gets a new fingerprint.

@@ -3,12 +3,14 @@ import { KeyRound, Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, StateBlock, Card, Button, Modal, Field, Input, Select, Badge, cx } from "../components/ui";
 import api, { apiError } from "../lib/api";
+import { useAuth } from "../lib/auth";
 
 const LEVEL_CYCLE = ["none", "view", "edit", "approve"];
 const LEVEL_TONE = { none: "gray", view: "blue", edit: "green", approve: "amber" };
 const LABELS = { overview: "Overview", finance: "Finance", budget: "Budget", costs: "Costs", payments: "Payments", parties: "Parties", contracts: "Contracts", work: "Work", documents: "Documents", requests: "Requests", reports: "Reports" };
 
 export default function AccessControl() {
+  const { user: currentUser } = useAuth();
   const users = useFetch("/users");
   const projects = useFetch("/projects");
   const meta = useFetch("/access-meta");
@@ -19,7 +21,11 @@ export default function AccessControl() {
   const [err, setErr] = useState("");
 
   const modules = meta.data?.modules || [];
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const suggestedLogin = (name) => {
+    const last = String(name || "").trim().split(/\s+/).pop();
+    return last ? `${last.replace(/[^a-z0-9]/gi, "").toLowerCase()}@nivara.com` : "";
+  };
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v, ...(k === "name" && modal?.mode === "add" ? { email: suggestedLogin(v), password: `${String(v || "").trim().split(/\s+/).pop() || ""}@123` } : {}) }));
 
   const openAdd = () => {
     setForm({ role: "PARTY_USER", party_type: "Contractor A", active: true });
@@ -45,7 +51,7 @@ export default function AccessControl() {
   const save = async () => {
     setErr(""); setBusy(true);
     try {
-      if (!form.email) throw new Error("Email is required");
+      if (!form.name) throw new Error("Name is required");
       const permissions = Object.entries(grants)
         .map(([pid, v]) => ({ project_id: pid, project_name: v.project_name, modules: Object.fromEntries(Object.entries(v.modules).filter(([, lvl]) => lvl && lvl !== "none")) }))
         .filter((p) => Object.keys(p.modules).length > 0);
@@ -60,10 +66,11 @@ export default function AccessControl() {
   const del = async (u) => { if (window.confirm(`Delete user ${u.email}?`)) { try { await api.delete(`/users/${u.id}`); users.refetch(); } catch (e) { alert(apiError(e)); } } };
 
   const rows = (users.data || []);
+  const defaultPassword = (name) => `${String(name || "Party").trim().split(/\s+/).pop()}@123`;
 
   return (
     <>
-      <PageHeader title="Access Control" subtitle="Grant granular, per-project, per-module access to parties and family." icon={KeyRound}
+      <PageHeader title={currentUser?.is_platform_admin ? "Platform access control" : "Access Control"} subtitle={currentUser?.is_platform_admin ? "Manage every finance owner and their workspace users." : "Grant granular, per-project, per-module access to parties and family."} icon={KeyRound}
         actions={<Button size="sm" onClick={openAdd} data-testid="add-user"><Plus size={15} /> Add user</Button>} />
 
       <Card className="overflow-hidden">
@@ -76,15 +83,15 @@ export default function AccessControl() {
               <tbody>
                 {rows.map((u) => (
                   <tr key={u.id} className="border-b border-line/70 hover:bg-muted/40">
-                    <td className="px-4 py-3"><div className="font-medium text-ink">{u.name}</div><div className="text-xs text-faint">{u.email}</div></td>
-                    <td className="px-4 py-3"><Badge tone={u.role === "SUPER_ADMIN" ? "brand" : u.role === "PROJECT_ADMIN" ? "blue" : "gray"}>{(u.role || "").replace(/_/g, " ")}</Badge>{u.party_type && <div className="text-xs text-faint mt-1">{u.party_type}</div>}</td>
+                    <td className="px-4 py-3"><div className="font-medium text-ink">{u.name}</div><div className="text-xs text-faint">{u.email}</div>{currentUser?.is_platform_admin && <div className="mt-1 text-xs text-subink">Workspace: {u.workspace_name}</div>}{currentUser?.role === "SUPER_ADMIN" && u.role === "PARTY_USER" && !u.initial_password_replaced && <div className="mt-1 text-xs text-brand">Initial password: {defaultPassword(u.name)}</div>}</td>
+                    <td className="px-4 py-3"><Badge tone={u.role === "SUPER_ADMIN" ? "brand" : u.role === "PROJECT_ADMIN" ? "blue" : "gray"}>{u.is_platform_admin ? "PLATFORM ADMIN" : (u.role || "").replace(/_/g, " ")}</Badge>{u.party_type && <div className="text-xs text-faint mt-1">{u.party_type}</div>}</td>
                     <td className="px-4 py-3">
                       {u.role === "SUPER_ADMIN" ? <span className="text-xs text-brand flex items-center gap-1"><ShieldCheck size={13} /> Full access</span>
                         : <span className="text-xs text-subink">{(u.permissions || []).length} project{(u.permissions || []).length !== 1 ? "s" : ""}</span>}
                     </td>
                     <td className="px-4 py-3"><Badge tone={u.active === false ? "gray" : "green"}>{u.active === false ? "inactive" : "active"}</Badge></td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {u.role !== "SUPER_ADMIN" && <>
+                      {(u.role !== "SUPER_ADMIN" || currentUser?.is_platform_admin) && <>
                         <button onClick={() => openEdit(u)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`edit-user-${u.id}`}><Pencil size={15} /></button>
                         <button onClick={() => del(u)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-expense"><Trash2 size={15} /></button>
                       </>}
@@ -100,14 +107,15 @@ export default function AccessControl() {
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.mode === "edit" ? "Edit user & access" : "Add user"} size="xl">
         <div className="grid sm:grid-cols-2 gap-3 mb-5">
           <Field label="Name"><Input value={form.name || ""} onChange={(e) => set("name", e.target.value)} data-testid="user-name" /></Field>
-          <Field label="Email *"><Input type="email" value={form.email || ""} disabled={modal?.mode === "edit"} onChange={(e) => set("email", e.target.value)} data-testid="user-email" /></Field>
-          <Field label="Role"><Select value={form.role || "PARTY_USER"} onChange={(e) => set("role", e.target.value)}><option value="PARTY_USER">Party User</option><option value="PROJECT_ADMIN">Project Admin</option></Select></Field>
+          <Field label="Login ID"><Input type="email" value={form.email || ""} disabled={modal?.mode === "edit"} onChange={(e) => set("email", e.target.value)} placeholder="Generated from last name" data-testid="user-email" /></Field>
+          <Field label="Role"><Select value={form.role || "PARTY_USER"} onChange={(e) => set("role", e.target.value)}><option value="PARTY_USER">Party User</option><option value="PROJECT_ADMIN">Project Admin</option><option value="SUPER_ADMIN">Finance owner — separate workspace</option></Select></Field>
           <Field label="Party Type"><Select value={form.party_type || ""} onChange={(e) => set("party_type", e.target.value)}><option value="">—</option>{(meta.data?.party_types || []).map((t) => <option key={t}>{t}</option>)}</Select></Field>
-          <Field label={modal?.mode === "edit" ? "Reset Password (optional)" : "Password"}><Input type="text" value={form.password || ""} onChange={(e) => set("password", e.target.value)} placeholder={modal?.mode === "edit" ? "Leave blank to keep" : "changeme123"} /></Field>
+          <Field label={modal?.mode === "edit" ? "Reset Password (optional)" : "Default Password"}><Input type="text" value={form.password || ""} onChange={(e) => set("password", e.target.value)} placeholder={modal?.mode === "edit" ? "Leave blank to keep" : "LastName@123"} /></Field>
           <Field label="Status"><Select value={form.active === false ? "false" : "true"} onChange={(e) => set("active", e.target.value === "true")}><option value="true">Active</option><option value="false">Inactive</option></Select></Field>
         </div>
 
-        <div className="mb-2 flex items-center justify-between">
+        {form.role === "SUPER_ADMIN" && <p className="mb-4 text-sm text-brand bg-brand-light rounded-lg p-3">This creates a separate, blank finance workspace for this person. They will sign in with the credentials above and add their own accounts, projects, vendors and records.</p>}
+        {form.role !== "SUPER_ADMIN" && <><div className="mb-2 flex items-center justify-between">
           <h4 className="font-display font-semibold text-ink">Project Access</h4>
           <span className="text-xs text-faint">Click a module to cycle: none → view → edit → approve</span>
         </div>
@@ -133,7 +141,7 @@ export default function AccessControl() {
               </div>
             </Card>
           ))}
-        </div>
+        </div></>}
 
         {err && <div className="text-sm text-expense bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mt-3">{err}</div>}
         <div className="flex gap-2 pt-4"><Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancel</Button><Button className="flex-1" onClick={save} disabled={busy} data-testid="user-save">{busy ? "Saving…" : "Save user"}</Button></div>

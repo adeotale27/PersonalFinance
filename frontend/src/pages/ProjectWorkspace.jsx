@@ -1,14 +1,14 @@
 import React, { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Camera } from "lucide-react";
+import { ArrowLeft, MapPin, Camera, Plus } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { StateBlock, Card, Badge, StatusBadge, Segmented, Spinner } from "../components/ui";
+import { StateBlock, Card, Badge, StatusBadge, Segmented, Spinner, Button, Modal, Field, Input, Select } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, Bars, CashFlowArea, Donut } from "../components/charts";
 import CrudManager from "../components/CrudManager";
 import DocumentsPanel from "../components/DocumentsPanel";
 import api, { docUrl } from "../lib/api";
-import { inr } from "../lib/format";
+import { inr, todayISO } from "../lib/format";
 
 export default function ProjectWorkspace() {
   const { id } = useParams();
@@ -17,9 +17,16 @@ export default function ProjectWorkspace() {
   const project = useFetch(`/projects/${id}`, [id]);
   const finance = useFetch(`/projects/${id}/finance`, [id]);
   const accounts = useFetch("/accounts");
+  const parties = useFetch(`/parties?project_id=${id}`, [id]);
   const settings = useFetch("/settings");
   const photoRef = useRef();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [expenseSignal, setExpenseSignal] = useState(0);
+  const [partyModal, setPartyModal] = useState(null); // { resolve } when invoked from expense selector
+  const [partyForm, setPartyForm] = useState({});
+  const [partySaving, setPartySaving] = useState(false);
+  const [partyError, setPartyError] = useState("");
+  const [credentials, setCredentials] = useState(null);
 
   const p = project.data;
   const f = finance.data;
@@ -54,19 +61,34 @@ export default function ProjectWorkspace() {
     { key: "outstanding", label: "Outstanding", align: "right", render: (r) => <span className="num font-semibold">{inr(r.outstanding)}</span> },
   ];
 
+  const openPartyModal = () => { setPartyForm({ party_type: "Civil Contractor", contract_value: "" }); setPartyError(""); setPartyModal({}); };
+  const quickCreateParty = () => new Promise((resolve) => { setPartyForm({ party_type: "Civil Contractor", contract_value: "" }); setPartyError(""); setPartyModal({ resolve }); });
+  const saveParty = async () => {
+    if (!partyForm.name?.trim()) return setPartyError("Party name is required");
+    setPartySaving(true); setPartyError("");
+    try {
+      const { data } = await api.post("/parties", { ...partyForm, name: partyForm.name.trim(), contract_value: Number(String(partyForm.contract_value || 0).replaceAll(",", "")), project_id: id });
+      await parties.refetch(); setPartyModal((current) => { current?.resolve?.({ value: data.name, label: data.name }); return null; });
+      setCredentials(data.initial_login);
+    } catch (e) { setPartyError(e.response?.data?.detail || e.message); } finally { setPartySaving(false); }
+  };
   const expFields = settings.data && accounts.data ? [
-    { key: "date", label: "Date", type: "date", required: true },
+    { key: "date", label: "Date", type: "date", required: true, default: todayISO() },
     { key: "amount", label: "Amount (₹)", type: "money", required: true },
     { key: "category", label: "Category", type: "select", options: settings.data.project_categories || [], required: true },
-    { key: "party", label: "Paid To (party)" },
+    { key: "party", label: "Paid To (party)", type: "select", options: (parties.data || []).map((x) => ({ value: x.name, label: x.name })), onAddOption: quickCreateParty },
     { key: "payment_class", label: "Payment Type", type: "select", options: [{ value: "OFFICIAL", label: "Official (on record)" }, { value: "UNOFFICIAL", label: "Unofficial (cash)" }], default: "OFFICIAL" },
-    { key: "account_id", label: "From Account", type: "select", options: (accounts.data || []).map((a) => ({ value: a.id, label: a.name })) },
+    { key: "account_id", label: "From Account", type: "select", options: [{ value: "CASH", label: "Cash (in hand)" }, ...(accounts.data || []).map((a) => ({ value: a.id, label: a.name }))], required: true },
+    { key: "payment_mode", label: "Paid Via", type: "select", options: ["Cash", "UPI", "Bank Transfer", "Cheque", "Card", "Net Banking"], required: true },
+    { key: "utr_number", label: "UTR Number", visible: (form) => form.payment_mode === "UPI" },
     { key: "description", label: "Description", full: true },
   ] : null;
   const expCols = [
     { key: "date", label: "Date", type: "date" },
     { key: "category", label: "Category", render: (r) => <Badge tone="brand">{r.category}</Badge> },
     { key: "party", label: "Paid To" },
+    { key: "payment_mode", label: "Via", render: (r) => r.payment_mode || "—" },
+    { key: "payment_status", label: "Acknowledgement", render: (r) => r.payment_status ? <Badge tone={r.payment_status === "PARTY_ACKNOWLEDGED" ? "green" : "amber"}>{r.payment_status.replaceAll("_", " ").toLowerCase()}</Badge> : "—" },
     { key: "payment_class", label: "Type", render: (r) => <Badge tone={r.payment_class === "UNOFFICIAL" ? "amber" : "blue"}>{(r.payment_class || "OFFICIAL").toLowerCase()}</Badge> },
     { key: "description", label: "Note", render: (r) => <span className="text-subink">{r.description || "—"}</span> },
     { key: "amount", label: "Amount", align: "right", render: (r) => <span className="num font-semibold text-expense">{inr(r.amount)}</span> },
@@ -110,9 +132,10 @@ export default function ProjectWorkspace() {
             </div>
           </Card>
 
-          <div className="mb-6 overflow-x-auto -mx-1 px-1">
-            <Segmented testid="proj-tabs" value={tab} onChange={setTab}
-              options={[{ value: "overview", label: "Overview" }, { value: "finance", label: "Finance" }, { value: "work", label: "Work" }, { value: "parties", label: "Parties" }, { value: "documents", label: "Documents" }]} />
+          <div className="mb-6 flex gap-3 items-center justify-between">
+            <div className="overflow-x-auto -mx-1 px-1"><Segmented testid="proj-tabs" value={tab} onChange={setTab}
+              options={[{ value: "overview", label: "Overview" }, { value: "finance", label: "Finance" }, { value: "work", label: "Work" }, { value: "parties", label: "Parties" }, { value: "documents", label: "Documents" }]} /></div>
+            <Button size="sm" className="shrink-0" onClick={() => { setTab("finance"); setExpenseSignal((x) => x + 1); }} data-testid="project-quick-expense"><Plus size={15} /> Add Expense</Button>
           </div>
 
           {!f ? <div className="py-10 flex justify-center"><Spinner className="w-6 h-6 text-brand" /></div> : (
@@ -148,7 +171,7 @@ export default function ProjectWorkspace() {
               {tab === "finance" && expFields && (
                 <CrudManager title="Project Expenses" endpoint="/transactions" listEndpoint={`/transactions?type=EXPENSE&project_id=${id}`}
                   addLabel="Add expense" fields={expFields} columns={expCols} onChanged={() => { finance.refetch(); project.refetch(); }}
-                  transform={(x) => ({ ...x, type: "EXPENSE", scope: "PROJECT", project_id: id })} deps={[id]} />
+                  transform={(x) => ({ ...x, type: "EXPENSE", scope: "PROJECT", project_id: id })} deps={[id, parties.data]} openSignal={expenseSignal} />
               )}
 
               {tab === "work" && (
@@ -159,13 +182,19 @@ export default function ProjectWorkspace() {
 
               {tab === "parties" && (
                 <CrudManager title="Parties & Vendors" endpoint="/parties" listEndpoint={`/parties?project_id=${id}`}
-                  addLabel="Add party" fields={partyFields} columns={partyCols} onChanged={finance.refetch}
-                  transform={(x) => ({ ...x, project_id: id })} deps={[id]} />
+                  addLabel="Add party" fields={partyFields} columns={partyCols} onChanged={() => { finance.refetch(); parties.refetch(); }}
+                  transform={(x) => ({ ...x, project_id: id })} deps={[id]} onCreated={(party) => party.initial_login && setCredentials(party.initial_login)} />
               )}
 
               {tab === "documents" && <DocumentsPanel projectId={id} title="Project Documents (Official & Unofficial)" showOfficial defaultCategory="Project" />}
             </>
           )}
+          <Modal open={!!partyModal} onClose={() => { partyModal?.resolve?.(null); setPartyModal(null); }} title="Add a project party" size="lg">
+            <p className="text-sm text-subink mb-4">Add the party’s details here. A private party login will be created automatically.</p>
+            <div className="grid sm:grid-cols-2 gap-3"><Field label="Party name *" className="sm:col-span-2"><Input autoFocus value={partyForm.name || ""} onChange={(e) => setPartyForm((f) => ({ ...f, name: e.target.value }))}/></Field><Field label="Type"><Select value={partyForm.party_type || "Other"} onChange={(e) => setPartyForm((f) => ({ ...f, party_type: e.target.value }))}>{partyFields[1].options.map((type) => <option key={type}>{type}</option>)}</Select></Field><Field label="Contact"><Input value={partyForm.contact || ""} onChange={(e) => setPartyForm((f) => ({ ...f, contact: e.target.value }))}/></Field><Field label="Scope of work"><Input value={partyForm.scope || ""} onChange={(e) => setPartyForm((f) => ({ ...f, scope: e.target.value }))}/></Field><Field label="Contract value (₹)"><Input inputMode="decimal" value={partyForm.contract_value || ""} onChange={(e) => setPartyForm((f) => ({ ...f, contract_value: e.target.value }))}/></Field></div>
+            {partyError && <p className="mt-3 text-sm text-expense">{partyError}</p>}<div className="flex gap-2 pt-5"><Button variant="secondary" className="flex-1" onClick={() => { partyModal?.resolve?.(null); setPartyModal(null); }}>Cancel</Button><Button className="flex-1" disabled={partySaving} onClick={saveParty}>{partySaving ? "Creating…" : "Create party"}</Button></div>
+          </Modal>
+          <Modal open={!!credentials} onClose={() => setCredentials(null)} title="Party login created" size="sm"><p className="text-sm text-subink">Share these temporary credentials securely with the party.</p><div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-4 space-y-2"><div><div className="overline text-faint">Login ID</div><div className="font-semibold text-ink break-all">{credentials?.email}</div></div><div><div className="overline text-faint">Default password</div><div className="font-semibold text-ink">{credentials?.password}</div></div></div><Button className="w-full mt-4" onClick={() => setCredentials(null)}>Done</Button></Modal>
         </>
       )}
     </StateBlock>

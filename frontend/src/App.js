@@ -35,12 +35,13 @@ import Calculators from "./pages/Calculators";
 import ReviewInbox from "./pages/ReviewInbox";
 import VersionControl from "./pages/VersionControl";
 import SmartImport from "./pages/SmartImport";
+import PartyPortal from "./pages/PartyPortal";
 
 function Protected({ children }) {
   const { user, checking } = useAuth();
   if (checking) return <div className="min-h-screen flex items-center justify-center"><Spinner className="w-7 h-7 text-brand" /></div>;
   if (!user) return <Navigate to="/login" replace />;
-  return <Layout>{children}</Layout>;
+  return user.role === "PARTY_USER" ? <PartyPortal /> : <Layout>{children}</Layout>;
 }
 
 function Shell() {

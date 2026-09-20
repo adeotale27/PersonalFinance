@@ -65,7 +65,7 @@ async def update_account(item_id: str, payload: dict, user: dict = Depends(requi
 
 @router.delete("/accounts/{item_id}")
 async def delete_account(item_id: str, user: dict = Depends(require_admin)):
-    await db.accounts.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    await db.accounts.delete_one({"_id": oid(item_id)})
     return {"status": "deleted"}
 
 
@@ -91,6 +91,15 @@ async def list_transactions(request: Request, user: dict = Depends(require_admin
 @router.post("/transactions")
 async def create_transaction(payload: dict, user: dict = Depends(require_admin)):
     payload = validate_financial_payload(payload)
+    if payload.get("type") == "EXPENSE" and payload.get("project_id") and payload.get("party"):
+        party = await db.parties.find_one({"project_id": payload["project_id"], "name": payload["party"], "deleted_at": {"$exists": False}})
+        if not party:
+            raise HTTPException(status_code=422, detail="Choose a party belonging to this project")
+        payload["party_id"] = str(party["_id"])
+    if payload.get("payment_mode") != "UPI":
+        payload.pop("utr_number", None)
+    if payload.get("type") == "EXPENSE" and payload.get("party_id"):
+        payload.setdefault("payment_status", "PENDING_PARTY_ACKNOWLEDGEMENT" if payload.get("payment_mode") in ("Cash", "UPI") else "RECORDED")
     payload["amount"] = round2(payload.get("amount", 0))
     payload.setdefault("scope", "PERSONAL")
     payload["date"] = normalize_date(payload.get("date") or now_utc().date().isoformat())
@@ -116,7 +125,7 @@ async def update_transaction(item_id: str, payload: dict, user: dict = Depends(r
 
 @router.delete("/transactions/{item_id}")
 async def delete_transaction(item_id: str, user: dict = Depends(require_admin)):
-    await db.transactions.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    await db.transactions.delete_one({"_id": oid(item_id)})
     return {"status": "deleted"}
 
 
@@ -256,10 +265,13 @@ async def _flush_collection_target(target: str):
 
 @router.get("/settings")
 async def get_settings(user: dict = Depends(require_admin)):
-    doc = await db.settings.find_one({"_id": "app"})
+    # Earlier installations used the global `_id: app`; new workspaces use a
+    # normal ObjectId plus a scoped settings key so each household is independent.
+    doc = await db.settings.find_one({"$or": [{"settings_key": "app"}, {"_id": "app"}]})
     if not doc:
-        doc = {"_id": "app", **DEFAULT_SETTINGS}
-        await db.settings.insert_one(doc)
+        doc = {"settings_key": "app", **DEFAULT_SETTINGS}
+        result = await db.settings.insert_one(doc)
+        doc["_id"] = result.inserted_id
     else:
         # New standard categories should appear for existing installations too,
         # without removing any categories the user already configured.
@@ -269,7 +281,7 @@ async def get_settings(user: dict = Depends(require_admin)):
             if merged != doc.get(key):
                 additions[key] = merged
         if additions:
-            await db.settings.update_one({"_id": "app"}, {"$set": additions})
+            await db.settings.update_one({"_id": doc["_id"]}, {"$set": additions})
             doc.update(additions)
     doc.pop("_id", None)
     return doc
@@ -278,8 +290,13 @@ async def get_settings(user: dict = Depends(require_admin)):
 @router.put("/settings")
 async def update_settings(payload: dict, user: dict = Depends(require_admin)):
     payload.pop("_id", None)
-    await db.settings.update_one({"_id": "app"}, {"$set": payload}, upsert=True)
-    doc = await db.settings.find_one({"_id": "app"})
+    doc = await db.settings.find_one({"$or": [{"settings_key": "app"}, {"_id": "app"}]})
+    if doc:
+        await db.settings.update_one({"_id": doc["_id"]}, {"$set": payload})
+    else:
+        result = await db.settings.insert_one({"settings_key": "app", **DEFAULT_SETTINGS, **payload})
+        doc = await db.settings.find_one({"_id": result.inserted_id})
+    doc = await db.settings.find_one({"_id": doc["_id"]})
     doc.pop("_id", None)
     return doc
 

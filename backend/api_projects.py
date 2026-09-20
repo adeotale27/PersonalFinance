@@ -1,7 +1,8 @@
 """Projects & Parties + project finance."""
 from collections import defaultdict
+import re
 from fastapi import APIRouter, Depends, HTTPException
-from core import db, serialize, oid, now_utc, require_admin, round2
+from core import db, serialize, oid, now_utc, require_admin, get_current_user, round2, hash_password, log_audit
 
 router = APIRouter(tags=["projects"])
 
@@ -55,7 +56,7 @@ async def update_project(item_id: str, payload: dict, user: dict = Depends(requi
 
 @router.delete("/projects/{item_id}")
 async def delete_project(item_id: str, user: dict = Depends(require_admin)):
-    await db.projects.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    await db.projects.delete_one({"_id": oid(item_id)})
     return {"status": "deleted"}
 
 
@@ -118,10 +119,38 @@ async def list_parties(project_id: str = None, user: dict = Depends(require_admi
 
 @router.post("/parties")
 async def create_party(payload: dict, user: dict = Depends(require_admin)):
+    name = (payload.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Party name is required")
+    if not payload.get("project_id"):
+        raise HTTPException(status_code=422, detail="A project is required for a party")
+    payload["name"] = name
     payload["contract_value"] = round2(payload.get("contract_value", 0))
     payload["created_at"] = now_utc()
     res = await db.parties.insert_one(payload)
-    return serialize(await db.parties.find_one({"_id": res.inserted_id}))
+    party = await db.parties.find_one({"_id": res.inserted_id})
+    # Every party has an isolated login.  Use a valid email-safe rendering of the
+    # supplied full name while retaining the requested predictable first password.
+    local = re.sub(r"[^a-z0-9]+", "", name.split()[-1].lower()) or "party"
+    email = f"{local}@nivara.com"
+    suffix = 2
+    while await db.users.find_one({"email": email}):
+        email = f"{local}{suffix}@nivara.com"; suffix += 1
+    # Password is intentionally derived from the party's last name as requested.
+    # It is never stored or returned from a user record after this creation event.
+    initial_password = f"{name.split()[-1]}@123"
+    user_res = await db.users.insert_one({
+        "email": email, "name": name, "role": "PARTY_USER", "party_id": str(res.inserted_id),
+        "project_id": payload["project_id"], "party_type": payload.get("party_type"),
+        "permissions": [], "password_hash": hash_password(initial_password), "active": True,
+        "initial_password_replaced": False,
+        "created_at": now_utc(),
+    })
+    await db.parties.update_one({"_id": res.inserted_id}, {"$set": {"user_id": str(user_res.inserted_id), "login_email": email}})
+    await log_audit(user, "create_party_login", "parties", str(res.inserted_id), {"email": email})
+    result = serialize(await db.parties.find_one({"_id": res.inserted_id}))
+    result["initial_login"] = {"email": email, "password": initial_password}
+    return result
 
 
 @router.put("/parties/{item_id}")
@@ -137,8 +166,51 @@ async def update_party(item_id: str, payload: dict, user: dict = Depends(require
 
 @router.delete("/parties/{item_id}")
 async def delete_party(item_id: str, user: dict = Depends(require_admin)):
-    await db.parties.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
-    return {"status": "deleted"}
+    party = await db.parties.find_one({"_id": oid(item_id)})
+    if not party:
+        raise HTTPException(status_code=404, detail="Party not found")
+    # A removed party must not remain selectable or retain a usable portal login.
+    await db.parties.delete_one({"_id": party["_id"]})
+    # Include legacy party users created before party_id was introduced.
+    await db.users.delete_many({"$or": [
+        {"party_id": item_id},
+        {"role": "PARTY_USER", "name": party.get("name"), "permissions.project_id": party.get("project_id")},
+    ]})
+    await db.documents.delete_many({"party_id": item_id})
+    await log_audit(user, "delete_party", "parties", item_id, {"cascade": ["users", "documents"]})
+    return {"status": "deleted", "id": item_id}
+
+
+# ---------------- party portal ----------------
+def _party_user(user: dict) -> str:
+    party_id = user.get("party_id")
+    if user.get("role") != "PARTY_USER" or not party_id:
+        raise HTTPException(status_code=403, detail="Party portal access required")
+    return party_id
+
+
+@router.get("/party-portal")
+async def party_portal(user: dict = Depends(get_current_user)):
+    party_id = _party_user(user)
+    party = await db.parties.find_one({"_id": oid(party_id), "deleted_at": {"$exists": False}})
+    if not party:
+        raise HTTPException(status_code=404, detail="Party profile not found")
+    transactions = await db.transactions.find({"party_id": party_id, "deleted_at": {"$exists": False}}).sort([("date", -1)]).to_list(2000)
+    documents = await db.documents.find({"party_id": party_id, "deleted_at": {"$exists": False}}).sort([("created_at", -1)]).to_list(1000)
+    return {"party": serialize(party), "payments": [serialize(x) for x in transactions], "documents": [serialize(x) for x in documents]}
+
+
+@router.post("/party-portal/payments/{transaction_id}/acknowledge")
+async def acknowledge_payment(transaction_id: str, user: dict = Depends(get_current_user)):
+    party_id = _party_user(user)
+    txn = await db.transactions.find_one({"_id": oid(transaction_id), "party_id": party_id, "deleted_at": {"$exists": False}})
+    if not txn:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if txn.get("payment_mode") not in ("Cash", "UPI"):
+        raise HTTPException(status_code=422, detail="Only cash and UPI payments require party acknowledgement")
+    await db.transactions.update_one({"_id": txn["_id"]}, {"$set": {"party_acknowledged_at": now_utc(), "payment_status": "PARTY_ACKNOWLEDGED"}})
+    await log_audit(user, "acknowledge_payment", "transaction", transaction_id)
+    return {"status": "acknowledged"}
 
 
 # ---------------- work logs ----------------
@@ -171,5 +243,5 @@ async def update_work_log(item_id: str, payload: dict, user: dict = Depends(requ
 
 @router.delete("/work-logs/{item_id}")
 async def delete_work_log(item_id: str, user: dict = Depends(require_admin)):
-    await db.work_logs.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    await db.work_logs.delete_one({"_id": oid(item_id)})
     return {"status": "deleted"}

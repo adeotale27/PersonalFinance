@@ -11,7 +11,7 @@ import re
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from core import db, now_utc, round2
+from core import db, raw_db, now_utc, round2
 
 
 def normalized_key(*parts: object) -> str:
@@ -25,16 +25,25 @@ def fingerprint(*parts: object) -> str:
 
 
 async def ensure_indexes() -> None:
-    """Additive indexes only; Mongo creates these without changing documents."""
-    await db.financial_entities.create_index("identity_key", unique=True)
-    await db.holdings.create_index("identity_key", unique=True)
-    await db.financial_transactions.create_index("fingerprint", unique=True)
-    await db.financial_transactions.create_index([("occurred_on", -1), ("entity_id", 1)])
-    await db.import_runs.create_index("content_sha256", unique=True)
-    await db.import_rows.create_index([("run_id", 1), ("row_number", 1)], unique=True)
-    await db.import_rows.create_index("fingerprint")
-    await db.valuation_snapshots.create_index("as_of", unique=True)
-    await db.reconciliation_cases.create_index([("status", 1), ("created_at", -1)])
+    """Create identities that are unique within a workspace, not globally."""
+    async def workspace_unique(collection, legacy_name, fields, name):
+        info = await collection.index_information()
+        legacy = info.get(legacy_name)
+        # Old single-field unique indexes reject a new household's first record
+        # (notably today's valuation snapshot). Replacing an index preserves data.
+        if legacy and legacy.get("unique"):
+            await collection.drop_index(legacy_name)
+        await collection.create_index([("workspace_id", 1), *fields], unique=True, name=name)
+
+    await workspace_unique(raw_db.financial_entities, "identity_key_1", [("identity_key", 1)], "workspace_identity_key")
+    await workspace_unique(raw_db.holdings, "identity_key_1", [("identity_key", 1)], "workspace_identity_key")
+    await workspace_unique(raw_db.financial_transactions, "fingerprint_1", [("fingerprint", 1)], "workspace_fingerprint")
+    await raw_db.financial_transactions.create_index([("workspace_id", 1), ("occurred_on", -1), ("entity_id", 1)])
+    await workspace_unique(raw_db.import_runs, "content_sha256_1", [("content_sha256", 1)], "workspace_content_sha256")
+    await workspace_unique(raw_db.import_rows, "run_id_1_row_number_1", [("run_id", 1), ("row_number", 1)], "workspace_run_row")
+    await raw_db.import_rows.create_index([("workspace_id", 1), ("fingerprint", 1)])
+    await workspace_unique(raw_db.valuation_snapshots, "as_of_1", [("as_of", 1)], "workspace_as_of")
+    await raw_db.reconciliation_cases.create_index([("workspace_id", 1), ("status", 1), ("created_at", -1)])
 
 
 async def entity_for_investment(name: str, owner: str, asset_class: str, source_import_id: str | None = None, session=None) -> dict:

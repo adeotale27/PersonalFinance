@@ -6,7 +6,7 @@ export function cx(...a) { return a.filter(Boolean).join(" "); }
 
 export function Card({ className, children, ...p }) {
   return (
-    <div className={cx("bg-surface rounded-2xl border border-slate-200/80 shadow-[0_12px_32px_rgba(15,23,42,0.045)]", className)} {...p}>
+    <div className={cx("bg-surface rounded-xl border border-slate-200/90 shadow-[0_8px_24px_rgba(15,23,42,0.035)]", className)} {...p}>
       {children}
     </div>
   );
@@ -107,10 +107,21 @@ export function Modal({ open, onClose, title, children, size = "md" }) {
   );
 }
 
+export function DetailDrawer({ open, onClose, title, eyebrow, children, actions }) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (event) => event.key === "Escape" && onClose();
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [open, onClose]);
+  if (!open) return null;
+  return createPortal(<div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label={title}><button aria-label="Close detail panel" className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px]" onClick={onClose}/><aside className="absolute right-0 top-0 h-full w-full max-w-[34rem] bg-white border-l border-line shadow-2xl animate-[slide-in_.22s_cubic-bezier(.16,1,.3,1)] overflow-y-auto"><div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-line px-6 py-5 flex items-start justify-between gap-4"><div><div className="overline text-faint">{eyebrow || "Financial detail"}</div><h2 className="font-display text-xl font-bold text-ink mt-1">{title}</h2></div><button onClick={onClose} className="p-2 rounded-lg hover:bg-muted text-subink" aria-label="Close"><X size={19}/></button></div><div className="p-6">{children}</div>{actions && <div className="sticky bottom-0 p-4 bg-white border-t border-line flex gap-2">{actions}</div>}</aside></div>, document.body);
+}
+
 export function Spinner({ className }) { return <Loader2 className={cx("animate-spin", className)} />; }
 
 export function StateBlock({ loading, error, empty, emptyText = "No records yet", onRetry, children }) {
-  if (loading) return <div className="flex flex-col items-center justify-center py-20 text-faint gap-3"><Spinner className="w-6 h-6 text-brand" /><span className="text-sm">Loading…</span></div>;
+  if (loading) return <div className="space-y-4 py-2" aria-label="Loading"><div className="h-7 w-48 rounded bg-slate-200 animate-pulse"/><div className="grid sm:grid-cols-3 gap-3"><div className="h-28 rounded-xl bg-slate-100 animate-pulse"/><div className="h-28 rounded-xl bg-slate-100 animate-pulse"/><div className="h-28 rounded-xl bg-slate-100 animate-pulse"/></div><div className="h-64 rounded-xl bg-slate-100 animate-pulse"/></div>;
   if (error) return (
     <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
       <AlertTriangle className="w-8 h-8 text-amber" />

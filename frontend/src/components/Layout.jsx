@@ -62,33 +62,34 @@ const MOBILE = [
   { name: "Admin", path: "/access-control", icon: ShieldAlert, tid: "mobile-nav-admin" },
 ];
 
-function Brand() {
+function Brand({ version, onVersion }) {
   return (
     <div className="flex items-center gap-2.5">
       <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-display font-extrabold text-lg shadow-lg shadow-teal-900/15">N</div>
       <div className="leading-tight">
         <div className="font-display font-bold text-ink tracking-tight">Nivara Finance</div>
-        <div className="text-[10px] text-faint font-medium -mt-0.5">Personal Financial OS</div>
+        <div className="text-[10px] text-faint font-medium -mt-0.5">Personal Financial OS <button onClick={onVersion} className="ml-1 text-brand font-bold hover:underline focus:outline-none" title="Open version control">V{version}</button></div>
       </div>
     </div>
   );
 }
 
-function NavItems({ onNavigate }) {
+function NavItems({ onNavigate, collapsed = false }) {
+  const [openGroups, setOpenGroups] = useState(() => Object.fromEntries(NAV.map((g) => [g.group, true])));
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">
+    <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
       {NAV.map((g) => (
         <div key={g.group}>
-          <div className="overline text-faint px-3 mb-1.5">{g.group}</div>
-          <div className="space-y-0.5">
+          {!collapsed && <button onClick={() => setOpenGroups((current) => ({ ...current, [g.group]: !current[g.group] }))} className="w-full overline text-faint px-3 mb-1.5 flex items-center justify-between hover:text-ink" aria-expanded={!!openGroups[g.group]}><span>{g.group}</span><ChevronDown size={13} className={cx("transition-transform", !openGroups[g.group] && "-rotate-90")}/></button>}
+          <div className={cx("space-y-0.5", !collapsed && !openGroups[g.group] && "hidden")}>
             {g.items.map((it) => (
               <NavLink key={it.path} to={it.path} end={it.path === "/"} onClick={onNavigate} data-testid={it.tid}
                 className={({ isActive }) => cx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-[background-color,color,transform,box-shadow]",
                   isActive ? "bg-gradient-to-r from-teal-50 to-emerald-50 text-brand-dark shadow-xs" : "text-subink hover:bg-muted hover:text-ink hover:translate-x-0.5"
-                )}>
+                )} title={collapsed ? it.name : undefined}>
                 <it.icon size={17} className="shrink-0" />
-                <span className="truncate">{it.name}</span>
+                {!collapsed && <span className="truncate">{it.name}</span>}
               </NavLink>
             ))}
           </div>
@@ -98,17 +99,22 @@ function NavItems({ onNavigate }) {
   );
 }
 
-function LiveIdentity() {
+function LiveIdentity({ version, onVersion }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
-  return <div className="hidden lg:flex text-xs leading-tight"><div><div className="font-semibold text-ink">{now.toLocaleDateString("en-IN", { weekday:"short", day:"2-digit", month:"short", year:"numeric", timeZone:"Asia/Kolkata" })}</div><div className="text-faint flex items-center gap-1 mt-0.5"><Clock3 size={12}/>{now.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:true, timeZone:"Asia/Kolkata" })} IST</div></div></div>;
+  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
+  return <div className="hidden lg:flex items-center gap-3"><Brand version={version} onVersion={onVersion}/><span className="h-8 w-px bg-line"/><div className="text-xs leading-tight whitespace-nowrap"><div className="font-semibold text-ink">{now.toLocaleDateString(undefined, { weekday:"short", day:"2-digit", month:"short", year:"numeric" })}</div><div className="text-faint flex items-center gap-1 mt-0.5"><Clock3 size={12}/>{now.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit", hour12:true })} · {zone}</div></div></div>;
 }
 
 function GlobalSearch() {
   const nav = useNavigate();
-  const [query, setQuery] = useState(""), [items, setItems] = useState([]), [open, setOpen] = useState(false);
+  const inputRef = useRef(null);
+  const [query, setQuery] = useState(""), [items, setItems] = useState([]), [open, setOpen] = useState(false), [active, setActive] = useState(0);
+  useEffect(() => { const shortcut = (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") { event.preventDefault(); inputRef.current?.focus(); setOpen(true); } }; window.addEventListener("keydown", shortcut); return () => window.removeEventListener("keydown", shortcut); }, []);
   useEffect(() => { if (query.trim().length < 2) { setItems([]); return undefined; } const timer = window.setTimeout(() => api.get(`/search?q=${encodeURIComponent(query)}`).then((response) => { setItems(response.data.items || []); setOpen(true); }).catch(() => {}), 250); return () => window.clearTimeout(timer); }, [query]);
-  return <div className="relative hidden xl:block w-[min(28vw,26rem)]"><label className="sr-only" htmlFor="financial-search">Search financial records</label><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"/><input id="financial-search" value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setOpen(items.length > 0)} placeholder="Search accounts, investments, documents…" className="w-full h-9 rounded-lg border border-line bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-teal-200"/>{open && items.length > 0 && <div className="absolute top-11 left-0 right-0 z-50 rounded-xl border border-line bg-white shadow-pop p-2 max-h-80 overflow-y-auto">{items.map((item) => <button key={`${item.group}-${item.id}`} onClick={() => { nav(item.path); setOpen(false); setQuery(""); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-muted"><span className="overline text-faint">{item.group}</span><span className="block text-sm font-semibold text-ink">{item.label}</span>{item.detail && <span className="block text-xs text-subink">{item.detail}</span>}</button>)}</div>}</div>;
+  const choose = (item) => { if (!item) return; nav(item.path); setOpen(false); setQuery(""); };
+  const keyDown = (event) => { if (event.key === "ArrowDown") { event.preventDefault(); setActive((value) => Math.min(value + 1, items.length - 1)); } if (event.key === "ArrowUp") { event.preventDefault(); setActive((value) => Math.max(value - 1, 0)); } if (event.key === "Enter") choose(items[active]); if (event.key === "Escape") setOpen(false); };
+  return <div className="relative hidden xl:block w-[min(31vw,30rem)]"><label className="sr-only" htmlFor="financial-search">Search financial records</label><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"/><input ref={inputRef} id="financial-search" value={query} onKeyDown={keyDown} onChange={(event) => { setQuery(event.target.value); setActive(0); }} onFocus={() => setOpen(items.length > 0)} placeholder="Search your financial life…" className="w-full h-9 rounded-lg border border-line bg-white pl-9 pr-14 text-sm outline-none focus:ring-2 focus:ring-teal-200"/><kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-faint border border-line rounded px-1.5 py-0.5">⌘K</kbd>{open && items.length > 0 && <div className="absolute top-11 left-0 right-0 z-50 rounded-xl border border-line bg-white shadow-pop p-2 max-h-80 overflow-y-auto">{items.map((item, index) => <button key={`${item.group}-${item.id}`} onMouseEnter={() => setActive(index)} onClick={() => choose(item)} className={cx("w-full text-left px-3 py-2 rounded-lg", active === index ? "bg-teal-50" : "hover:bg-muted")}><span className="overline text-faint">{item.group}</span><span className="block text-sm font-semibold text-ink">{item.label}</span>{item.detail && <span className="block text-xs text-subink">{item.detail}</span>}</button>)}</div>}</div>;
 }
 
 function Notifications() {
@@ -161,20 +167,23 @@ function OverdueAlertPopups() {
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const [drawer, setDrawer] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickAdd, setQuickAdd] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [errorCount, setErrorCount] = useState(0);
+  const [version, setVersion] = useState("—");
   const nav = useNavigate();
   const loc = useLocation();
   const initials = (user?.name || user?.email || "A").slice(0, 1).toUpperCase();
   useEffect(() => { api.get("/error-logs/unread-count").then((r) => setErrorCount(r.data.count || 0)).catch(() => {}); }, [loc.pathname]);
+  useEffect(() => { api.get("/version-history").then((r) => setVersion(r.data.current || "—")).catch(() => {}); }, []);
 
   return (
     <div className="min-h-screen bg-bg flex">
       {/* Desktop sidebar */}
-      <aside className="w-72 bg-white/80 backdrop-blur-xl border-r border-slate-200/70 hidden lg:flex flex-col h-screen sticky top-0 z-30">
-        <div className="h-20 px-5 flex items-center"><Brand /></div>
-        <NavItems />
+      <aside className={cx("bg-white/80 backdrop-blur-xl border-r border-slate-200/70 hidden lg:flex flex-col h-screen sticky top-0 z-30 transition-[width] duration-200", sidebarCollapsed ? "w-20" : "w-72")}>
+        <div className={cx("h-20 px-5 flex items-center", sidebarCollapsed ? "justify-center" : "justify-between")}><div className={sidebarCollapsed ? "hidden" : ""}><Brand version={version} onVersion={() => nav("/versions")} /></div>{sidebarCollapsed && <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-display font-extrabold text-lg">N</div>}<button onClick={() => setSidebarCollapsed((value) => !value)} className={cx("w-10 h-10 rounded-lg text-subink hover:bg-muted flex items-center justify-center", sidebarCollapsed && "absolute -right-5 bg-white border border-line shadow-sm")} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronRight size={18} className={cx("transition-transform", !sidebarCollapsed && "rotate-180")}/></button></div>
+        <NavItems collapsed={sidebarCollapsed} />
         <div className="p-3 border-t border-line">
           <button onClick={logout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-subink hover:bg-muted hover:text-expense transition-colors">
             <LogOut size={17} /> Sign out
@@ -188,7 +197,7 @@ export default function Layout({ children }) {
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={() => setDrawer(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-72 bg-surface flex flex-col animate-fade-in">
             <div className="h-16 px-5 flex items-center justify-between border-b border-line">
-              <Brand /><button onClick={() => setDrawer(false)} className="p-1.5 text-subink"><X size={20} /></button>
+              <Brand version={version} onVersion={() => { setDrawer(false); nav("/versions"); }} /><button onClick={() => setDrawer(false)} className="p-1.5 text-subink"><X size={20} /></button>
             </div>
             <NavItems onNavigate={() => setDrawer(false)} />
             <div className="p-3 border-t border-line">
@@ -203,8 +212,8 @@ export default function Layout({ children }) {
         <header className="h-20 px-4 sm:px-7 bg-white/75 backdrop-blur-xl sticky top-0 z-20 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button onClick={() => setDrawer(true)} className="lg:hidden p-2 -ml-2 text-subink" data-testid="menu-btn"><Menu size={22} /></button>
-            <div className="lg:hidden"><Brand /></div>
-            <LiveIdentity />
+            <div className="lg:hidden"><Brand version={version} onVersion={() => nav("/versions")} /></div>
+            <LiveIdentity version={version} onVersion={() => nav("/versions")} />
           </div>
           <GlobalSearch />
           <div className="flex items-center gap-2 sm:gap-3">

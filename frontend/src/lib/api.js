@@ -7,11 +7,16 @@ const api = axios.create({ baseURL: API });
 const responseCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
+export const invalidateCache = () => {
+  responseCache.clear();
+  window.dispatchEvent(new Event("nivara:data-changed"));
+};
+
 api.getCached = (url, config = {}) => {
   const token = localStorage.getItem("nivara_token") || "";
   const key = `${token.slice(-12)}:${url}`;
   const cached = responseCache.get(key);
-  if (cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve({ data: cached.data });
+  if (!config.force && cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve({ data: cached.data });
   return api.get(url, config).then((response) => {
     responseCache.set(key, { data: response.data, at: Date.now() });
     return response;
@@ -25,7 +30,7 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (r) => { if (r.config.method !== "get") responseCache.clear(); return r; },
+  (r) => { if (r.config.method !== "get") invalidateCache(); return r; },
   (err) => {
     // Fire-and-forget operational telemetry. Never log the logger itself.
     if (!err.config?.url?.includes("/error-logs") && err.config?.url !== "/auth/login") {

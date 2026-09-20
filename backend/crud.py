@@ -70,7 +70,7 @@ def make_crud_router(name: str, collection: str, pre_save=None, list_sort=None):
         existing = await coll.find_one({"_id": oid(item_id)})
         if not existing:
             raise HTTPException(status_code=404, detail=f"{name} not found")
-        await coll.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+        await coll.delete_one({"_id": oid(item_id)})
         await log_audit(user, "delete", collection, item_id)
         return {"status": "deleted", "id": item_id}
 

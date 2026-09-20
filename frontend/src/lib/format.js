@@ -34,3 +34,44 @@ export function fmtMonth(m) {
 export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
+
+export function fmtDateTime(d) {
+  if (!d) return "—";
+  const dt = new Date(d);
+  if (isNaN(dt)) return d;
+  const timezone = localStorage.getItem("nivara_timezone") || "Asia/Kolkata";
+  return `${fmtDate(d)} · ${new Intl.DateTimeFormat("en-IN", {
+    timeZone: timezone, hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true,
+  }).format(dt)}`;
+}
+
+export function indianNumber(value) {
+  const raw = String(value ?? "").replace(/,/g, "").trim();
+  if (!raw || raw === "-" || raw === ".") return raw;
+  const [whole, decimal] = raw.split(".");
+  const parsed = Number(whole);
+  if (!Number.isFinite(parsed)) return raw;
+  const formatted = Math.abs(parsed).toLocaleString("en-IN");
+  return `${whole.startsWith("-") ? "-" : ""}${formatted}${decimal !== undefined ? `.${decimal}` : ""}`;
+}
+
+export function moneyValue(value) {
+  return String(value ?? "").replace(/,/g, "");
+}
+
+export function dateInputValue(value) {
+  return value ? fmtDate(value) : "";
+}
+
+export function dateToISO(value) {
+  const text = String(value || "").trim();
+  if (!text) return text;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const parts = text.split(/[-/]/).map((x) => x.trim());
+  if (parts.length !== 3 || parts.some((x) => !/^\d+$/.test(x))) return text;
+  const format = localStorage.getItem("nivara_date_format") || "DD-MM-YYYY";
+  const [a, b, c] = parts;
+  const [year, month, day] = format === "YYYY-MM-DD" ? [a, b, c] : format === "MM-DD-YYYY" ? [c, a, b] : [c, b, a];
+  const iso = `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  return /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(iso) ? iso : text;
+}

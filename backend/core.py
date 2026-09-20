@@ -1,5 +1,6 @@
 """Nivara core: config, db, auth, and shared helpers."""
 import os
+from contextvars import ContextVar
 from datetime import datetime, timezone, timedelta
 
 from dotenv import load_dotenv
@@ -18,7 +19,89 @@ MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 
 _client = AsyncIOMotorClient(MONGO_URL)
-db = _client[DB_NAME]
+raw_db = _client[DB_NAME]
+
+# Every finance record belongs to exactly one private workspace.  Keeping this
+# rule at the collection boundary means a newly-added endpoint cannot
+# accidentally expose another household's data by forgetting a filter.
+_workspace_id: ContextVar[str | None] = ContextVar("workspace_id", default=None)
+
+
+def set_workspace(workspace_id: str | None):
+    """Bind database access to a workspace for the current request/task."""
+    return _workspace_id.set(workspace_id)
+
+
+def reset_workspace(token):
+    _workspace_id.reset(token)
+
+
+def workspace_for(user: dict) -> str:
+    return user.get("workspace_id") or str(user["_id"])
+
+
+def _scoped(query: dict | None) -> dict:
+    workspace_id = _workspace_id.get()
+    if not workspace_id:
+        return query or {}
+    query = query or {}
+    # $and avoids clobbering caller-supplied $or/$and filters.
+    return {"$and": [query, {"workspace_id": workspace_id}]}
+
+
+class WorkspaceCollection:
+    """A small Motor collection facade that enforces workspace ownership."""
+    def __init__(self, collection):
+        self._collection = collection
+
+    def find(self, filter=None, *args, **kwargs):
+        return self._collection.find(_scoped(filter), *args, **kwargs)
+
+    async def find_one(self, filter=None, *args, **kwargs):
+        return await self._collection.find_one(_scoped(filter), *args, **kwargs)
+
+    async def count_documents(self, filter, *args, **kwargs):
+        return await self._collection.count_documents(_scoped(filter), *args, **kwargs)
+
+    async def insert_one(self, document, *args, **kwargs):
+        document = dict(document)
+        if _workspace_id.get():
+            document["workspace_id"] = _workspace_id.get()
+        return await self._collection.insert_one(document, *args, **kwargs)
+
+    async def insert_many(self, documents, *args, **kwargs):
+        workspace_id = _workspace_id.get()
+        docs = [{**dict(doc), **({"workspace_id": workspace_id} if workspace_id else {})} for doc in documents]
+        return await self._collection.insert_many(docs, *args, **kwargs)
+
+    async def update_one(self, filter, update, *args, **kwargs):
+        if kwargs.get("upsert") and _workspace_id.get():
+            update = dict(update)
+            update["$setOnInsert"] = {**update.get("$setOnInsert", {}), "workspace_id": _workspace_id.get()}
+        return await self._collection.update_one(_scoped(filter), update, *args, **kwargs)
+
+    async def update_many(self, filter, update, *args, **kwargs):
+        return await self._collection.update_many(_scoped(filter), update, *args, **kwargs)
+
+    async def delete_one(self, filter, *args, **kwargs):
+        return await self._collection.delete_one(_scoped(filter), *args, **kwargs)
+
+    async def delete_many(self, filter, *args, **kwargs):
+        return await self._collection.delete_many(_scoped(filter), *args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._collection, name)
+
+
+class WorkspaceDatabase:
+    def __getitem__(self, name):
+        return WorkspaceCollection(raw_db[name])
+
+    def __getattr__(self, name):
+        return WorkspaceCollection(getattr(raw_db, name))
+
+
+db = WorkspaceDatabase()
 
 
 # ---------- time ----------
@@ -91,9 +174,12 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
-        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        # Authentication must locate the account globally before the request is
+        # scoped. All application reads/writes after this line are isolated.
+        user = await raw_db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user or not user.get("active", True):
             raise HTTPException(status_code=401, detail="User not found or inactive")
+        set_workspace(workspace_for(user))
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")

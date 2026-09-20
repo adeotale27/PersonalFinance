@@ -1,23 +1,25 @@
-import React, { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, CalendarDays } from "lucide-react";
 import { Card, Button, Modal, Field, Input, Select, Textarea, StateBlock, cx } from "./ui";
 import api, { apiError } from "../lib/api";
 import { useFetch } from "../lib/useFetch";
-import { inr } from "../lib/format";
+import { inr, fmtDate, indianNumber, moneyValue, dateInputValue, dateToISO } from "../lib/format";
 
 function FieldInput({ f, value, onChange }) {
   const common = { value: value ?? "", onChange: (e) => onChange(f.key, e.target.value), "data-testid": `field-${f.key}` };
   if (f.type === "select")
-    return <Select {...common}><option value="">Select…</option>{(f.options || []).map((o) => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}</Select>;
+    return <Select {...common} onChange={async (e) => { if (e.target.value === "__add_option__") { const created = await f.onAddOption?.(); if (created) onChange(f.key, created.value ?? created); return; } onChange(f.key, e.target.value); }}><option value="">Select…</option>{(f.options || []).map((o) => <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>)}{f.onAddOption && <option value="__add_option__">+ Add party…</option>}</Select>;
   if (f.type === "textarea") return <Textarea {...common} placeholder={f.placeholder} />;
-  if (f.type === "number" || f.type === "money") return <Input type="number" step="any" {...common} placeholder={f.placeholder || "0"} />;
-  if (f.type === "date") return <Input type="date" {...common} />;
+  if (f.type === "money") return <Input inputMode="decimal" {...common} value={indianNumber(value)} onChange={(e) => onChange(f.key, moneyValue(e.target.value))} placeholder={f.placeholder || "0"} />;
+  if (f.type === "number") return <Input type="number" step="any" {...common} placeholder={f.placeholder || "0"} />;
+  if (f.type === "date") return <div className="flex gap-2"><Input {...common} value={dateInputValue(value)} placeholder={dateInputValue("2026-09-20")} /><label className="relative w-10 h-10 shrink-0 rounded-lg border border-line bg-white text-subink hover:bg-muted flex items-center justify-center cursor-pointer" title="Open calendar"><CalendarDays size={17}/><input type="date" aria-label={`Choose ${f.label}`} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" value={dateToISO(value)} onChange={(e) => onChange(f.key, e.target.value)} /></label></div>;
   return <Input {...common} placeholder={f.placeholder} />;
 }
 
 export default function CrudManager({
   title, endpoint, listEndpoint, fields, columns, onChanged, addLabel = "Add", emptyText,
   canEdit = true, canDelete = true, deps = [], transform, rowClassName,
+  onRowClick, openSignal, onCreated,
 }) {
   const { data, loading, error, refetch } = useFetch(listEndpoint || endpoint, deps);
   const [open, setOpen] = useState(false);
@@ -30,6 +32,7 @@ export default function CrudManager({
   const cols = columns || fields.filter((f) => !f.hideInTable).map((f) => ({ key: f.key, label: f.label, type: f.type }));
 
   const openAdd = () => { setEditing(null); setForm(fields.reduce((a, f) => (f.default != null ? { ...a, [f.key]: f.default } : a), {})); setFormErr(""); setOpen(true); };
+  useEffect(() => { if (openSignal) openAdd(); }, [openSignal]);
   const openEdit = (row) => { setEditing(row); setForm({ ...row }); setFormErr(""); setOpen(true); };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -38,12 +41,15 @@ export default function CrudManager({
     setFormErr(""); setSaving(true);
     try {
       const payload = { ...form };
-      fields.forEach((f) => { if ((f.type === "number" || f.type === "money") && payload[f.key] != null && payload[f.key] !== "") payload[f.key] = parseFloat(payload[f.key]); });
-      for (const f of fields) if (f.required && (payload[f.key] == null || payload[f.key] === "")) throw new Error(`${f.label} is required`);
+      fields.forEach((f) => { if ((f.type === "number" || f.type === "money") && payload[f.key] != null && payload[f.key] !== "") payload[f.key] = parseFloat(moneyValue(payload[f.key])); });
+      fields.forEach((f) => { if (f.type === "date" && payload[f.key]) payload[f.key] = dateToISO(payload[f.key]); });
+      for (const f of fields) if ((!f.visible || f.visible(payload)) && f.required && (payload[f.key] == null || payload[f.key] === "")) throw new Error(`${f.label} is required`);
       const body = transform ? transform(payload) : payload;
-      if (editing) await api.put(`${endpoint}/${editing.id}`, body);
-      else await api.post(endpoint, body);
+      let response;
+      if (editing) response = await api.put(`${endpoint}/${editing.id}`, body);
+      else response = await api.post(endpoint, body);
       setOpen(false); await refetch(); onChanged && onChanged();
+      onCreated && onCreated(response.data);
     } catch (e) { setFormErr(e.response ? apiError(e) : e.message); } finally { setSaving(false); }
   };
 
@@ -56,7 +62,7 @@ export default function CrudManager({
     if (c.render) return c.render(row);
     const v = row[c.key];
     if (c.type === "money") return <span className="num font-semibold">{inr(v)}</span>;
-    if (c.type === "date") return v ? new Date(v.length <= 10 ? v + "T00:00:00" : v).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    if (c.type === "date") return fmtDate(v);
     return v ?? "—";
   };
 
@@ -69,18 +75,18 @@ export default function CrudManager({
       <StateBlock loading={loading} error={error} empty={rows.length === 0} emptyText={emptyText || "No records yet — add your first one."} onRetry={refetch}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead className="bg-muted/60 text-faint overline border-b border-line">
+            <thead className="sticky top-0 z-[1] bg-slate-50/95 backdrop-blur text-faint overline border-b border-line">
               <tr>{cols.map((c) => <th key={c.key} className={cx("px-4 py-2.5 whitespace-nowrap", c.align === "right" && "text-right")}>{c.label}</th>)}
                 {(canEdit || canDelete) && <th className="px-4 py-2.5 text-right">Actions</th>}</tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.id} className={cx("border-b border-line/70 hover:bg-muted/40 transition-colors", rowClassName && rowClassName(row))}>
+                <tr key={row.id} onClick={() => onRowClick && onRowClick(row)} className={cx("border-b border-line/70 hover:bg-teal-50/40 transition-colors", onRowClick && "cursor-pointer", rowClassName && rowClassName(row))}>
                   {cols.map((c) => <td key={c.key} className={cx("px-4 py-3 text-ink/90", c.align === "right" && "text-right num")}>{renderCell(row, c)}</td>)}
                   {(canEdit || canDelete) && (
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {canEdit && <button onClick={() => openEdit(row)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`edit-${row.id}`}><Pencil size={15} /></button>}
-                      {canDelete && <button onClick={() => remove(row)} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-expense" data-testid={`delete-${row.id}`}><Trash2 size={15} /></button>}
+                      {canEdit && <button onClick={(event) => { event.stopPropagation(); openEdit(row); }} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-brand" data-testid={`edit-${row.id}`}><Pencil size={15} /></button>}
+                      {canDelete && <button onClick={(event) => { event.stopPropagation(); remove(row); }} className="p-1.5 rounded-lg text-subink hover:bg-white hover:text-expense" data-testid={`delete-${row.id}`}><Trash2 size={15} /></button>}
                     </td>
                   )}
                 </tr>
@@ -92,8 +98,8 @@ export default function CrudManager({
 
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? `Edit ${title}` : `Add ${title}`} size="lg">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {fields.map((f) => (
-            <Field key={f.key} label={f.label + (f.type === "date" ? " (YYYY-MM-DD)" : "") + (f.required ? " *" : "")} className={f.full ? "sm:col-span-2" : ""}>
+          {fields.filter((f) => !f.visible || f.visible(form)).map((f) => (
+            <Field key={f.key} label={`${f.label}${f.required ? " *" : ""}${f.type === "date" ? ` (${localStorage.getItem("nivara_date_format") || "DD-MM-YYYY"})` : ""}`} className={f.full ? "sm:col-span-2" : ""}>
               <FieldInput f={f} value={form[f.key]} onChange={set} />
             </Field>
           ))}

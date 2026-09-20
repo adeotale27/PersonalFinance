@@ -1,151 +1,31 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
+import { ArrowUpRight, ChevronRight, CircleDollarSign, Landmark, Wallet, PieChart as PieIcon, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import {
-  Scale, Wallet, TrendingUp, CreditCard, Handshake, Landmark, PiggyBank,
-  LineChart as LineIcon, Building2, FolderKanban, AlertTriangle, ChevronRight, Activity, Sparkles, Target, ArrowUpRight,
-} from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { StateBlock, Card } from "../components/ui";
-import KpiCard from "../components/KpiCard";
-import { ChartCard, CashFlowArea, Donut, Legendish, Bars } from "../components/charts";
-import { inr, fmtDate } from "../lib/format";
+import { Badge, Card, DetailDrawer, Segmented, StateBlock } from "../components/ui";
+import { Bars, ChartCard, Donut, TrendLine } from "../components/charts";
+import { inr } from "../lib/format";
 import ActionCenter from "../components/ActionCenter";
 
+const ranges = [{ value: "1M", label: "1M" }, { value: "6M", label: "6M" }, { value: "1Y", label: "1Y" }, { value: "ALL", label: "All" }];
+
 export default function Overview() {
-  const { data, loading, error, refetch } = useFetch("/dashboard/overview");
-  const nav = useNavigate();
-  const health = data ? Math.max(0, Math.min(100, Math.round(55 + (data.month_income > data.month_expense ? 18 : -12) + (data.savings > 0 ? 12 : 0) - (data.attention?.length || 0) * 4))) : 0;
-  const available = data ? Math.max(0, data.month_income - data.month_expense) : 0;
-
-  return (
-    <StateBlock loading={loading} error={error} onRetry={refetch}>
-      {data && (
-        <>
-          <div className="relative overflow-hidden rounded-[28px] mb-6 p-6 sm:p-8 bg-gradient-to-br from-slate-950 via-teal-950 to-teal-700 text-white shadow-[0_24px_70px_rgba(4,47,46,.25)]">
-            <div className="absolute inset-0 opacity-[0.13]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} />
-            <div className="absolute -right-8 -top-8 w-64 h-64 rounded-full bg-emerald-300/15 blur-2xl" />
-            <div className="relative flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 text-xs font-semibold text-teal-100 bg-white/10 rounded-full px-3 py-1"><Sparkles size={13}/> Nivara Finance · action-led overview</div>
-                <div className="font-display font-extrabold text-3xl sm:text-4xl tracking-tight mt-3">Know what deserves your attention.</div>
-                <p className="text-sm text-teal-100/80 mt-2 max-w-xl">{available > 0 ? `${inr(available, { compact: true })} remains after this month’s tracked spending.` : "Review spending and upcoming actions to regain room this month."}</p>
-                <div className="flex items-center gap-4 mt-3 text-sm text-teal-50/90">
-                  <span>Assets <span className="num font-semibold text-white">{inr(data.total_assets, { compact: true })}</span></span>
-                  <span className="w-px h-4 bg-white/20" />
-                  <span>Liabilities <span className="num font-semibold text-white">{inr(data.total_liabilities, { compact: true })}</span></span>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="text-right px-4 py-3 rounded-2xl bg-white/10 backdrop-blur border border-white/10 min-w-[130px]">
-                  <div className="overline text-teal-100/80">Money health</div>
-                  <div className="flex justify-end items-baseline gap-1 mt-1"><span className="num font-bold text-2xl">{health}</span><span className="text-teal-100 text-xs">/100</span></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Primary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
-            <KpiCard label="Total Assets" raw={data.total_assets} tone="income" icon={Wallet} onClick={() => nav("/net-worth")} sub="shown separately" testid="kpi-total-assets" />
-            <KpiCard label="Total Liabilities" raw={data.total_liabilities} tone="expense" icon={Landmark} onClick={() => nav("/net-worth")} sub="shown separately" testid="kpi-total-liabilities" />
-            <KpiCard label="Financial Snapshot" value="View details" tone="brand" icon={Scale} onClick={() => nav("/net-worth")} sub="assets and obligations separately" testid="kpi-net-worth" />
-            <KpiCard label="Income · This Month" raw={data.month_income} tone="income" icon={TrendingUp} onClick={() => nav("/income")} testid="kpi-month-income" />
-            <KpiCard label="Expense · This Month" raw={data.month_expense} tone="expense" icon={CreditCard} onClick={() => nav("/expenses")} testid="kpi-month-expense" />
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
-            <Card className="p-5 lg:col-span-2 bg-gradient-to-br from-white to-teal-50/55">
-              <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="w-8 h-8 grid place-items-center rounded-xl bg-teal-100 text-brand"><Target size={16}/></span><h3 className="font-display font-semibold text-ink">This month’s focus</h3></div><p className="text-sm text-subink mt-3">{available >= 0 ? "Your tracked income currently covers spending. Keep building a buffer for planned payments." : "Tracked spending is ahead of income. Review expenses and upcoming commitments."}</p></div><button onClick={() => nav("/cash-flow")} className="text-brand text-sm font-semibold inline-flex items-center gap-1 whitespace-nowrap">Explore cash flow <ArrowUpRight size={15}/></button></div>
-              <div className="mt-4 h-2.5 rounded-full bg-teal-100 overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-teal-500 to-emerald-400" style={{ width: `${Math.min(100, Math.max(8, health))}%` }}/></div>
-            </Card>
-            <Card className="p-5 bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-100"><div className="overline text-brand">Saved this month</div><div className="num text-3xl font-extrabold text-ink mt-2">{inr(data.month_savings, { compact: true })}</div><p className="text-xs text-subink mt-2">A clearer view, without reducing your finances to a single number.</p></Card>
-          </div>
-
-          <div className="mb-6"><ActionCenter compact /></div>
-
-          {/* Secondary KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-            <KpiCard label="Money Lent Out" raw={data.lending_outstanding} tone="info" icon={Handshake} onClick={() => nav("/lending")} sub="outstanding" testid="kpi-lending" />
-            <KpiCard label="Borrowings" raw={data.borrowing_outstanding} tone="amber" icon={Landmark} onClick={() => nav("/lending?tab=BORROWED")} sub="outstanding" testid="kpi-borrowing" />
-            <KpiCard label="Savings + PF/PPF" raw={data.savings + data.pf_ppf} tone="brand" icon={PiggyBank} onClick={() => nav("/savings")} testid="kpi-savings" />
-            <KpiCard label="Investments" raw={data.investments} tone="ink" icon={LineIcon} onClick={() => nav("/net-worth")} testid="kpi-investments" />
-          </div>
-
-          {/* Cash flow + allocation */}
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            <ChartCard title="Cash Flow" subtitle="Money in vs money out · last 12 months" className="lg:col-span-2" testid="chart-cashflow">
-              <CashFlowArea data={data.cash_flow} />
-            </ChartCard>
-            <ChartCard title="Wealth Allocation" subtitle="Where your money sits" height={200} testid="chart-allocation">
-              <Donut data={(data.allocation || []).filter((a) => a.value > 0)} centerLabel="Assets" centerValue={inr(data.total_assets, { compact: true })} />
-            </ChartCard>
-          </div>
-
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            <ChartCard title="Liability Allocation" subtitle="What you owe, by obligation" height={210}>
-              {(data.liability_allocation || []).some((item) => item.value > 0) ? <Donut data={data.liability_allocation.filter((item) => item.value > 0)} centerLabel="Liabilities" centerValue={inr(data.total_liabilities, { compact: true })} /> : <Empty />}
-            </ChartCard>
-            <Card className="p-5 lg:col-span-2"><div className="flex items-center justify-between"><div><div className="overline text-faint">Cash position</div><h3 className="font-display font-semibold text-ink mt-1">Available and expected cash</h3></div><button onClick={() => nav("/cash-flow")} className="text-sm font-semibold text-brand">Open forecast</button></div><div className="grid sm:grid-cols-3 gap-3 mt-5">{[["Available now", data.cash_position?.available_now], ["Expected receivables", data.cash_position?.expected_receivables], ["Known obligations", data.cash_position?.upcoming_obligations]].map(([label, value]) => <div key={label} className="rounded-xl bg-muted/60 p-3"><div className="overline text-faint">{label}</div><div className="num font-bold text-lg text-ink mt-1">{inr(value, { compact: true })}</div></div>)}</div></Card>
-          </div>
-
-          {/* Breakdown + attention */}
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-            <ChartCard title="Income by Source" height={220} testid="chart-income-breakdown">
-              {data.income_breakdown?.length ? <Bars data={data.income_breakdown} series={[{ key: "value", name: "Income", color: "#10B981" }]} /> : <Empty />}
-            </ChartCard>
-            <ChartCard title="Expenses by Category" height={220} testid="chart-expense-breakdown">
-              {data.expense_breakdown?.length ? <Bars data={data.expense_breakdown} series={[{ key: "value", name: "Expense", color: "#F43F5E" }]} /> : <Empty />}
-            </ChartCard>
-
-            <Card className="p-5" data-testid="attention-card">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-8 h-8 rounded-lg bg-amber-light text-amber flex items-center justify-center"><AlertTriangle size={16} /></span>
-                <h3 className="font-display font-semibold text-ink">Attention Required</h3>
-              </div>
-              {data.attention?.length ? (
-                <div className="space-y-2">
-                  {data.attention.map((a, i) => (
-                    <button key={i} onClick={() => nav(a.path)} data-testid={`attention-${a.type}`}
-                      className="w-full flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/60 hover:bg-muted text-left transition-colors group">
-                      <span className="text-sm text-ink">{a.label}</span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="num font-semibold text-sm text-expense">{inr(a.value, { compact: true })}</span>
-                        <ChevronRight size={15} className="text-faint group-hover:text-brand" />
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-subink py-6 text-center">All clear — nothing needs attention. 🎉</p>}
-            </Card>
-          </div>
-
-          {/* Projects strip + recent activity */}
-          <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 lg:gap-4">
-              <KpiCard label="Active Projects" value={String(data.active_projects)} tone="brand" icon={FolderKanban} onClick={() => nav("/projects")} sub={`${data.total_projects} total`} testid="kpi-projects" />
-              <KpiCard label="Rent Collected · Month" raw={data.month_rent_collected} tone="income" icon={Building2} onClick={() => nav("/rental")} testid="kpi-rent" />
-            </div>
-            <Card className="p-5 lg:col-span-2" data-testid="recent-activity">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="w-8 h-8 rounded-lg bg-muted text-subink flex items-center justify-center"><Activity size={16} /></span>
-                <h3 className="font-display font-semibold text-ink">Recent Activity</h3>
-              </div>
-              {data.recent_activity?.length ? (
-                <div className="divide-y divide-line">
-                  {data.recent_activity.slice(0, 7).map((a, i) => (
-                    <div key={i} className="flex items-center justify-between py-2.5 text-sm">
-                      <span className="text-ink capitalize">{(a.action || "").replace(/_/g, " ")} <span className="text-faint">· {a.entity}</span></span>
-                      <span className="text-xs text-faint">{fmtDate(a.timestamp)}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-subink py-6 text-center">No activity yet.</p>}
-            </Card>
-          </div>
-        </>
-      )}
-    </StateBlock>
-  );
+  const nav = useNavigate(); const [range, setRange] = useState("ALL"), [drawer, setDrawer] = useState(null);
+  const overview = useFetch("/dashboard/overview"), history = useFetch("/networth/history");
+  const data = overview.data;
+  const historyData = useMemo(() => { const all = history.data?.items || []; if (range === "ALL") return all; const days = range === "1M" ? 31 : range === "6M" ? 183 : 365; const after = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10); return all.filter((point) => point.date >= after); }, [history.data, range]);
+  return <StateBlock loading={overview.loading || history.loading} error={overview.error || history.error} onRetry={() => { overview.refetch(); history.refetch(); }}>
+    {data && <div className="space-y-4 sm:space-y-5">
+      <section className="grid xl:grid-cols-12 gap-4 sm:gap-5">
+        <div className="xl:col-span-8 rounded-2xl bg-[#102b2b] text-white p-5 sm:p-7 min-h-[350px] flex flex-col overflow-hidden relative"><div className="absolute right-0 top-0 h-full w-1/2 opacity-20 bg-[radial-gradient(circle_at_top_right,_#5eead4,_transparent_62%)]"/><div className="relative flex flex-wrap items-start justify-between gap-4"><div><div className="overline text-teal-200">Total net worth</div><div className="num text-4xl sm:text-5xl font-bold tracking-tight mt-2">{inr(data.net_worth, { compact: true })}</div><div className="flex items-center gap-2 mt-3 text-sm text-teal-100"><span className={data.month_savings >= 0 ? "text-emerald-300" : "text-rose-300"}>{data.month_savings >= 0 ? "+" : ""}{inr(data.month_savings, { compact: true })}</span><span>this month’s net cash flow</span></div></div><Segmented options={ranges} value={range} onChange={setRange}/></div><div className="relative flex-1 min-h-[190px] mt-5">{historyData.length > 1 ? <TrendLine data={historyData} xKey="date" yKey="net_worth" name="Net worth" monthLabels={false} color="#5eead4"/> : <div className="h-full flex items-center justify-center text-sm text-teal-100/70">Your recorded valuation trend will build here over time.</div>}</div><div className="relative pt-3 border-t border-white/10 flex gap-5 text-xs text-teal-100"><button onClick={() => setDrawer("assets")} className="hover:text-white">Assets <strong className="num ml-1 text-white">{inr(data.total_assets, { compact: true })}</strong></button><button onClick={() => setDrawer("liabilities")} className="hover:text-white">Liabilities <strong className="num ml-1 text-white">{inr(data.total_liabilities, { compact: true })}</strong></button></div></div>
+        <Card className="xl:col-span-4 p-5 sm:p-6 flex flex-col"><div className="flex items-center justify-between"><div><div className="overline text-faint">Financial position</div><h2 className="font-display font-semibold text-ink mt-1">Today at a glance</h2></div><span className="w-9 h-9 rounded-lg bg-teal-50 text-brand grid place-items-center"><Sparkles size={17}/></span></div><div className="divide-y divide-line mt-4">{[["Liquid today", data.cash_position?.available_now, Wallet, "/accounts"], ["Expected receivables", data.cash_position?.expected_receivables, CircleDollarSign, "/lending"], ["Known obligations", data.cash_position?.upcoming_obligations, Landmark, "/loans"]].map(([label, value, Icon, path]) => <button key={label} onClick={() => nav(path)} className="w-full flex items-center justify-between py-4 text-left group"><span className="flex items-center gap-3 text-sm text-subink"><Icon size={16} className="text-faint"/>{label}</span><span className="num font-bold text-ink group-hover:text-brand">{inr(value, { compact: true })}</span></button>)}</div><button onClick={() => nav("/planner")} className="mt-auto pt-4 text-sm text-brand font-semibold inline-flex items-center gap-1">Open financial planner <ArrowUpRight size={15}/></button></Card>
+      </section>
+      <section className="grid lg:grid-cols-12 gap-4 sm:gap-5"><ChartCard className="lg:col-span-4" title="Asset allocation" subtitle="Click to explore wealth" height={220}><Donut data={(data.allocation || []).filter((row) => row.value > 0)} centerLabel="Assets" centerValue={inr(data.total_assets, { compact: true })}/></ChartCard><ChartCard className="lg:col-span-4" title="Liability mix" subtitle="Outstanding obligations" height={220}>{data.liability_allocation?.some((row) => row.value > 0) ? <Donut data={data.liability_allocation.filter((row) => row.value > 0)} centerLabel="Owed" centerValue={inr(data.total_liabilities, { compact: true })}/> : <Empty label="No liabilities recorded"/>}</ChartCard><Card className="lg:col-span-4 p-5"><div className="flex items-center justify-between"><div><div className="overline text-faint">This month</div><h3 className="font-display font-semibold text-ink mt-1">What changed?</h3></div><button onClick={() => nav("/cash-flow")} className="text-brand"><ChevronRight size={18}/></button></div><div className="mt-5 space-y-3">{[["Income", data.month_income, "text-emerald-700"], ["Expenses", -data.month_expense, "text-rose-700"], ["Net cash flow", data.month_savings, "text-ink"]].map(([label, value, tone]) => <div key={label} className="flex justify-between text-sm"><span className="text-subink">{label}</span><span className={`num font-bold ${tone}`}>{value >= 0 ? "+" : ""}{inr(value, { compact: true })}</span></div>)}</div><div className="mt-5 pt-4 border-t border-line text-xs text-faint">Net-worth attribution will expand as valuations and investment activity accrue.</div></Card></section>
+      <section className="grid lg:grid-cols-12 gap-4 sm:gap-5"><ChartCard className="lg:col-span-7" title="Cash flow" subtitle="Income and outflow by month" height={255}><Bars data={data.cash_flow || []} xKey="month" monthLabels series={[{ key:"in", name:"Income", color:"#0f766e" }, { key:"out", name:"Expenses", color:"#e11d48" }]}/></ChartCard><div className="lg:col-span-5"><ActionCenter compact/></div></section>
+      <section className="grid md:grid-cols-3 gap-3"><Metric label="Investments" value={data.investments} onClick={() => nav("/savings")}/><Metric label="Money lent" value={data.lending_outstanding} onClick={() => nav("/lending")}/><Metric label="Review data" value="Open inbox" text onClick={() => nav("/review")}/></section>
+      <DetailDrawer open={!!drawer} onClose={() => setDrawer(null)} title={drawer === "assets" ? "Asset allocation" : "Liabilities"} eyebrow="Financial breakdown"><div className="space-y-3">{(drawer === "assets" ? data.allocation : data.liability_allocation).filter((row) => row.value > 0).map((row) => <button onClick={() => nav(drawer === "assets" ? "/net-worth" : "/loans")} key={row.name} className="w-full text-left p-4 rounded-xl border border-line hover:border-teal-200 hover:bg-teal-50/40 flex justify-between"><span className="font-semibold text-ink">{row.name}</span><span className="num font-bold">{inr(row.value)}</span></button>)}</div></DetailDrawer>
+    </div>}
+  </StateBlock>;
 }
-
-function Empty() { return <div className="h-full flex items-center justify-center text-sm text-faint">No data yet</div>; }
+function Empty({ label }) { return <div className="h-full grid place-items-center text-sm text-faint">{label}</div>; }
+function Metric({ label, value, onClick, text }) { return <button onClick={onClick} className="text-left p-4 rounded-xl border border-line bg-white hover:border-teal-200 hover:shadow-xs transition"><div className="overline text-faint">{label}</div><div className="num text-xl font-bold text-ink mt-2">{text ? value : inr(value, { compact: true })}</div></button>; }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { TrendingUp, CreditCard, Handshake, Landmark, ImageUp, Sparkles, Loader2 } from "lucide-react";
 import { Modal, Field, Input, Select, Textarea, Button, cx, DatalistInput } from "./ui";
 import api, { apiError } from "../lib/api";
-import { todayISO } from "../lib/format";
+import { todayISO, indianNumber, moneyValue } from "../lib/format";
 
 const TYPES = [
   { key: "EXPENSE", label: "Expense", icon: CreditCard, tone: "text-expense" },
@@ -17,6 +17,7 @@ export default function QuickAdd({ open, onClose, onDone }) {
   const [accounts, setAccounts] = useState([]);
   const [settings, setSettings] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [parties, setParties] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [proof, setProof] = useState(null);
@@ -33,11 +34,16 @@ export default function QuickAdd({ open, onClose, onDone }) {
   }, [open]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const chooseProject = async (projectId) => {
+    set("project_id", projectId); set("party", "");
+    if (!projectId) return setParties([]);
+    try { const { data } = await api.get(`/parties?project_id=${projectId}`); setParties(data); } catch (_) { setParties([]); }
+  };
 
   const submit = async () => {
     setError(""); setSaving(true);
     try {
-      const amount = parseFloat(form.amount);
+      const amount = parseFloat(moneyValue(form.amount));
       if (!amount || amount <= 0) throw new Error("Enter a valid amount");
       if (type === "INCOME" || type === "EXPENSE") {
         await api.post("/transactions", {
@@ -48,7 +54,8 @@ export default function QuickAdd({ open, onClose, onDone }) {
           project_id: form.project_id || null,
           scope: form.project_id ? "PROJECT" : "PERSONAL",
           party: form.party || undefined,
-          payment_mode: form.payment_mode || "UPI",
+          payment_mode: form.payment_mode || "Cash",
+          utr_number: form.payment_mode === "UPI" ? form.utr_number || form.transaction_reference || null : null,
           description: form.description || "",
           source_image_id: form.source_image_id || null,
           transaction_reference: form.transaction_reference || null,
@@ -100,7 +107,7 @@ export default function QuickAdd({ open, onClose, onDone }) {
 
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Amount (₹)"><Input type="number" autoFocus value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} placeholder="0" data-testid="quick-amount" /></Field>
+          <Field label="Amount (₹)"><Input inputMode="decimal" autoFocus value={indianNumber(form.amount)} onChange={(e) => set("amount", moneyValue(e.target.value))} placeholder="0" data-testid="quick-amount" /></Field>
           <Field label="Date"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} data-testid="quick-date" /></Field>
         </div>
 
@@ -121,17 +128,20 @@ export default function QuickAdd({ open, onClose, onDone }) {
               <Field label="Account">
                 <Select value={form.account_id || ""} onChange={(e) => set("account_id", e.target.value)} data-testid="quick-account">
                   <option value="">Select…</option>
+                  <option value="CASH">Cash (in hand)</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                 </Select>
               </Field>
             </div>
             <Field label="Link to project (optional)">
-              <Select value={form.project_id || ""} onChange={(e) => set("project_id", e.target.value)} data-testid="quick-project">
+              <Select value={form.project_id || ""} onChange={(e) => chooseProject(e.target.value)} data-testid="quick-project">
                 <option value="">Personal</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
             </Field>
-            {form.transaction_reference && <Field label="Transaction reference / UTR"><Input value={form.transaction_reference} onChange={(e) => set("transaction_reference", e.target.value)} /></Field>}
+            {form.project_id && type === "EXPENSE" && <Field label="Paid to (party)"><Select value={form.party || ""} onChange={(e) => set("party", e.target.value)}><option value="">Select…</option>{parties.map((party) => <option key={party.id} value={party.name}>{party.name}</option>)}</Select></Field>}
+            <Field label="Paid via"><Select value={form.payment_mode || ""} onChange={(e) => set("payment_mode", e.target.value)}><option value="">Select…</option>{(settings?.payment_methods || ["Cash", "UPI"]).map((mode) => <option key={mode}>{mode}</option>)}</Select></Field>
+            {form.payment_mode === "UPI" && <Field label="UTR Number"><Input value={form.utr_number || form.transaction_reference || ""} onChange={(e) => { set("utr_number", e.target.value); set("transaction_reference", e.target.value); }} /></Field>}
           </>
         )}
 

@@ -22,12 +22,11 @@ export default function KpiCard({ label, value, raw, sub, trend, tone = "ink", i
       onClick={onClick}
       data-testid={testid}
       className={cx(
-        "group relative overflow-hidden bg-surface rounded-2xl border border-line p-4 sm:p-5 shadow-xs ring-1 ring-transparent transition-all duration-300",
+        "group relative overflow-hidden bg-surface rounded-xl border border-line p-4 sm:p-5 shadow-xs ring-1 ring-transparent transition-all duration-200",
         clickable && "cursor-pointer hover:-translate-y-0.5 hover:shadow-card hover:ring-line"
       )}
     >
-      <div className={cx("absolute inset-0 bg-gradient-to-br opacity-70 pointer-events-none", t.grad)} />
-      <div className={cx("absolute left-0 top-4 bottom-4 w-1 rounded-r-full", t.bar)} />
+      <div className={cx("absolute left-0 top-4 bottom-4 w-0.5 rounded-r-full", t.bar)} />
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
           <span className="overline text-faint">{label}</span>

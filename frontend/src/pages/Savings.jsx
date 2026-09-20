@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { PiggyBank, Bot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useFetch } from "../lib/useFetch";
-import { PageHeader, StateBlock, Badge } from "../components/ui";
+import { PageHeader, StateBlock, Badge, DetailDrawer } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, Donut, TrendLine } from "../components/charts";
 import CrudManager from "../components/CrudManager";
@@ -10,6 +10,7 @@ import { inr, todayISO } from "../lib/format";
 
 export default function Savings() {
   const nav = useNavigate();
+  const [selectedInvestment, setSelectedInvestment] = useState(null);
   const { data: s, loading, error, refetch } = useFetch("/savings/summary");
   const invSummary = useFetch("/investments");
   const family = useFetch("/family");
@@ -79,8 +80,9 @@ export default function Savings() {
       </StateBlock>
       <div className="space-y-6">
         <CrudManager title="Savings Products" endpoint="/savings" addLabel="Add savings" fields={savingsFields} columns={savingsCols} onChanged={refetch} />
-        <CrudManager title="Investments" endpoint="/investments" addLabel="Add investment" fields={invFields} columns={invCols} onChanged={() => { refetch(); invSummary.refetch(); }} />
+        <CrudManager title="Investments" endpoint="/investments" addLabel="Add investment" fields={invFields} columns={invCols} onRowClick={setSelectedInvestment} onChanged={() => { refetch(); invSummary.refetch(); }} />
       </div>
+      <DetailDrawer open={!!selectedInvestment} onClose={() => setSelectedInvestment(null)} title={selectedInvestment?.name} eyebrow="Investment position"><div className="grid grid-cols-2 gap-3">{[["Current value", selectedInvestment?.current_value], ["Invested", selectedInvestment?.cost], ["Gain / loss", (selectedInvestment?.current_value || 0) - (selectedInvestment?.cost || 0)], ["Quantity", selectedInvestment?.quantity || 0]].map(([label, value]) => <div key={label} className="p-3 rounded-lg bg-muted"><div className="overline text-faint">{label}</div><div className="num font-bold text-ink mt-1">{label === "Quantity" ? value : inr(value)}</div></div>)}</div><div className="mt-6 border-b border-line flex gap-5 text-sm font-semibold"><button className="pb-2 border-b-2 border-brand text-brand">Overview</button><button className="pb-2 text-faint">Source</button><button className="pb-2 text-faint">Documents</button></div><p className="mt-4 text-sm text-subink">This position is linked to its import source and financial entity when available.</p></DetailDrawer>
     </>
   );
 }

@@ -7,7 +7,7 @@ load_dotenv()
 from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 
-from core import db, hash_password, verify_password, now_utc
+from core import db, raw_db, hash_password, verify_password, now_utc, set_workspace, reset_workspace
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nivara")
@@ -65,43 +65,76 @@ app.add_middleware(
 
 @app.middleware("http")
 async def operational_error_logging(request, call_next):
+    token = set_workspace(None)
     try:
         return await call_next(request)
     except Exception as exc:
         from api_errors import write_error
         await write_error("API", type(exc).__name__, str(exc), request.url.path, 500, {"method": request.method})
         raise
+    finally:
+        reset_workspace(token)
 
 
 async def seed_admin():
     email = os.environ.get("ADMIN_EMAIL", "admin@nivara.app").strip().lower()
     password = os.environ.get("ADMIN_PASSWORD", "Nivara@2026")
     name = os.environ.get("ADMIN_NAME", "Nivara Admin")
-    existing = await db.users.find_one({"email": email})
+    existing = await raw_db.users.find_one({"email": email})
     if existing is None:
-        await db.users.insert_one({
+        await raw_db.users.insert_one({
             "email": email, "password_hash": hash_password(password),
             "name": name, "role": "SUPER_ADMIN", "active": True,
             "permissions": [], "created_at": now_utc(),
         })
         logger.info("Seeded admin user %s", email)
     elif not verify_password(password, existing.get("password_hash", "")):
-        await db.users.update_one({"email": email}, {"$set": {"password_hash": hash_password(password), "role": "SUPER_ADMIN"}})
+        await raw_db.users.update_one({"email": email}, {"$set": {"password_hash": hash_password(password), "role": "SUPER_ADMIN"}})
         logger.info("Updated admin password for %s", email)
+    # The configured primary account is the only platform administrator. It can
+    # oversee workspace owners without making those owners see each other's data.
+    await raw_db.users.update_one({"email": email}, {"$set": {"role": "SUPER_ADMIN", "is_platform_admin": True}})
+
+
+async def migrate_legacy_workspace_data() -> str:
+    """Put pre-workspace installations into their original owner's workspace.
+
+    This migration is idempotent and intentionally preserves every existing
+    record; new workspace owners always start with no records.
+    """
+    owner = await raw_db.users.find_one({"is_platform_admin": True}) or await raw_db.users.find_one({"role": "SUPER_ADMIN"}, sort=[("created_at", 1)])
+    if not owner:
+        raise RuntimeError("A workspace owner is required")
+    workspace_id = owner.get("workspace_id") or str(owner["_id"])
+    await raw_db.users.update_one({"_id": owner["_id"]}, {"$set": {"workspace_id": workspace_id, "is_workspace_owner": True}})
+    await raw_db.workspaces.update_one(
+        {"_id": workspace_id},
+        {"$setOnInsert": {"_id": workspace_id, "owner_user_id": str(owner["_id"]), "name": owner.get("name") or "My Finance", "created_at": now_utc()}},
+        upsert=True,
+    )
+    # Collections are discovered rather than maintained as a fragile list, so
+    # every current finance module is covered during the one-time upgrade.
+    for name in await raw_db.list_collection_names():
+        if name in {"users", "login_attempts", "workspaces"}:
+            continue
+        await raw_db[name].update_many({"workspace_id": {"$exists": False}}, {"$set": {"workspace_id": workspace_id}})
+    await raw_db.users.update_many({"workspace_id": {"$exists": False}}, {"$set": {"workspace_id": workspace_id}})
+    return workspace_id
 
 
 @app.on_event("startup")
 async def startup():
     try:
-        await db.users.create_index("email", unique=True)
-        await db.login_attempts.create_index("identifier")
-        await db.transactions.create_index([("date", -1)])
-        await db.transactions.create_index("project_id")
+        await raw_db.users.create_index("email", unique=True)
+        await raw_db.login_attempts.create_index("identifier")
+        await raw_db.transactions.create_index([("workspace_id", 1), ("date", -1)])
+        await raw_db.transactions.create_index([("workspace_id", 1), ("project_id", 1)])
         from financial_services import ensure_indexes
         await ensure_indexes()
     except Exception as e:
         logger.warning("Index setup: %s", e)
     await seed_admin()
+    default_workspace = await migrate_legacy_workspace_data()
     try:
         from storage import init_storage
         init_storage()
@@ -109,8 +142,14 @@ async def startup():
     except Exception as e:
         logger.warning("Storage init failed (uploads may not work yet): %s", e)
     try:
-        from seed import seed_demo, seed_v2
-        await seed_demo()
-        await seed_v2()
+        # Demo data belongs only to the original workspace, never to a new
+        # household joining the same app.
+        token = set_workspace(default_workspace)
+        try:
+            from seed import seed_demo, seed_v2
+            await seed_demo()
+            await seed_v2()
+        finally:
+            reset_workspace(token)
     except Exception as e:
         logger.warning("Demo seed skipped: %s", e)
