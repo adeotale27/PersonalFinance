@@ -3,12 +3,13 @@ import { Scale } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, StateBlock, Card, Badge } from "../components/ui";
 import KpiCard from "../components/KpiCard";
-import { ChartCard, Donut, Bars } from "../components/charts";
+import { ChartCard, Donut, Bars, TrendLine } from "../components/charts";
 import CrudManager from "../components/CrudManager";
 import { inr } from "../lib/format";
 
 export default function NetWorth() {
   const { data, loading, error, refetch } = useFetch("/networth");
+  const history = useFetch("/networth/history");
   const family = useFetch("/family");
   const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
@@ -18,6 +19,7 @@ export default function NetWorth() {
     { key: "purchase_value", label: "Purchase Value (₹)", type: "money" },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
     { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "notes", label: "Notes", type: "textarea", full: true },
   ];
   const assetCols = [
@@ -32,6 +34,8 @@ export default function NetWorth() {
     { key: "outstanding", label: "Outstanding (₹)", type: "money", required: true },
     { key: "interest_rate", label: "Interest %", type: "number" },
     { key: "due_date", label: "Due Date", type: "date" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
   ];
   const liabCols = [
     { key: "name", label: "Liability", render: (r) => <span className="font-medium text-ink">{r.name}</span> },
@@ -52,6 +56,9 @@ export default function NetWorth() {
               <KpiCard label="Total Liabilities" raw={data.total_liabilities} tone="expense" testid="nw-liabilities" />
             </div>
             <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
+              <ChartCard title="Net Worth History" subtitle="Recorded daily valuations only" height={230} className="lg:col-span-3">
+                {history.data?.items?.length > 1 ? <TrendLine data={history.data.items} xKey="date" yKey="net_worth" name="Net worth" monthLabels={false} /> : <div className="h-full flex items-center justify-center text-sm text-faint">History will appear as Nivara records daily snapshots.</div>}
+              </ChartCard>
               <ChartCard title="Asset Allocation" height={230} className="lg:col-span-1">
                 <Donut data={(data.allocation || []).filter((a) => a.value > 0)} centerLabel="Assets" centerValue={inr(data.total_assets, { compact: true })} />
               </ChartCard>

@@ -11,7 +11,7 @@ export function useFetch(url, deps = []) {
 
   const refetch = useCallback(() => {
     setLoading(true);
-    return api.get(urlRef.current)
+    return api.getCached(urlRef.current)
       .then((r) => { setData(r.data); setError(null); })
       .catch((e) => setError(e))
       .finally(() => setLoading(false));

@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Inbox, Loader2, AlertTriangle } from "lucide-react";
 
 export function cx(...a) { return a.filter(Boolean).join(" "); }
 
 export function Card({ className, children, ...p }) {
   return (
-    <div className={cx("bg-surface rounded-xl border border-line shadow-xs", className)} {...p}>
+    <div className={cx("bg-surface rounded-2xl border border-slate-200/80 shadow-[0_12px_32px_rgba(15,23,42,0.045)]", className)} {...p}>
       {children}
     </div>
   );
@@ -91,8 +92,8 @@ export function Modal({ open, onClose, title, children, size = "md" }) {
   }, [open, onClose]);
   if (!open) return null;
   const w = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" data-testid="modal">
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4" data-testid="modal" role="dialog" aria-modal="true" aria-label={title}>
       <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px] animate-fade-in" onClick={onClose} />
       <div className={cx("relative bg-surface w-full rounded-t-2xl sm:rounded-2xl shadow-pop border border-line animate-fade-up max-h-[92vh] overflow-y-auto", w)}>
         <div className="sticky top-0 bg-surface/95 backdrop-blur border-b border-line px-5 py-4 flex items-center justify-between z-10">
@@ -101,7 +102,8 @@ export function Modal({ open, onClose, title, children, size = "md" }) {
         </div>
         <div className="p-5">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -127,7 +129,7 @@ export function StateBlock({ loading, error, empty, emptyText = "No records yet"
 
 export function PageHeader({ title, subtitle, actions, icon: Icon }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+    <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
       <div className="flex items-start gap-3">
         {Icon && <div className="w-11 h-11 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0"><Icon size={22} /></div>}
         <div>

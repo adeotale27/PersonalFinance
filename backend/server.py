@@ -1,4 +1,4 @@
-"""Nivara API entrypoint."""
+"""Nivara Finance API entrypoint."""
 import os
 import logging
 from dotenv import load_dotenv
@@ -12,7 +12,7 @@ from core import db, hash_password, verify_password, now_utc
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("nivara")
 
-app = FastAPI(title="Nivara API", version="0.1.0")
+app = FastAPI(title="Nivara Finance API", version="0.1.0")
 
 api = APIRouter(prefix="/api")
 
@@ -35,10 +35,21 @@ from api_documents import router as documents_router
 from api_insurance import router as insurance_router
 from api_farms import router as farms_router
 from api_loans import router as loans_router
+from api_exports import router as export_router
+from api_losses import router as losses_router
+from api_notifications import router as notifications_router
+from api_diary import router as diary_router
+from api_errors import router as errors_router
+from api_necessities import router as necessities_router
+from api_goals import router as goals_router
+from api_proof import router as proof_router
+from api_planning import router as planning_router
+from api_version import router as version_router
+from api_imports import router as imports_router
 
 for r in (auth_router, finance_router, lending_router, wealth_router, rental_router,
           projects_router, admin_router, dashboard_router, documents_router,
-          insurance_router, farms_router, loans_router):
+          insurance_router, farms_router, loans_router, export_router, losses_router, notifications_router, diary_router, errors_router, necessities_router, goals_router, proof_router, planning_router, version_router, imports_router):
     api.include_router(r)
 
 app.include_router(api)
@@ -51,6 +62,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def operational_error_logging(request, call_next):
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        from api_errors import write_error
+        await write_error("API", type(exc).__name__, str(exc), request.url.path, 500, {"method": request.method})
+        raise
 
 
 async def seed_admin():
@@ -77,6 +97,8 @@ async def startup():
         await db.login_attempts.create_index("identifier")
         await db.transactions.create_index([("date", -1)])
         await db.transactions.create_index("project_id")
+        from financial_services import ensure_indexes
+        await ensure_indexes()
     except Exception as e:
         logger.warning("Index setup: %s", e)
     await seed_admin()

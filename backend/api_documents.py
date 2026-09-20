@@ -28,6 +28,17 @@ async def list_documents(category: str = None, related_entity_id: str = None, fo
     return [serialize(d) for d in docs]
 
 
+@router.get("/documents/link-options")
+async def document_link_options(user: dict = Depends(require_admin)):
+    """Small, stable lookup list for attaching evidence to an exact record."""
+    sources = (("loans", "loans", "name"), ("insurance", "insurance", "policy_name"), ("farms", "farms", "name"), ("rental_property", "rental_properties", "name"), ("lending", "lendings", "counterparty"), ("asset", "assets", "name"))
+    options = []
+    for entity_type, collection, label in sources:
+        for row in await db[collection].find({"deleted_at": {"$exists": False}}).to_list(1000):
+            options.append({"type": entity_type, "id": str(row["_id"]), "label": row.get(label) or entity_type.replace("_", " ").title()})
+    return options
+
+
 @router.post("/documents")
 async def upload_document(
     file: UploadFile = File(...),
@@ -43,6 +54,11 @@ async def upload_document(
     notes: str = Form(""),
     user: dict = Depends(require_admin),
 ):
+    # A linked document is intentionally explicit. A record ID without its type
+    # is ambiguous across household ledgers and would make later integrations
+    # unsafe to reconcile.
+    if bool(related_entity_type) != bool(related_entity_id):
+        raise HTTPException(status_code=422, detail="Choose both a related record type and record ID when linking a document")
     ext = (file.filename or "").rsplit(".", 1)[-1].lower() if "." in (file.filename or "") else ""
     if ext not in ALLOWED:
         raise HTTPException(status_code=400, detail=f"File type .{ext or '(none)'} not allowed")

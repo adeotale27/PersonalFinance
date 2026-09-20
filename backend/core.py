@@ -114,6 +114,55 @@ def round2(x) -> float:
         return 0.0
 
 
+# HTML inputs are helpful but never a security or data-integrity boundary. These
+# names cover monetary, percentage and quantity fields used by Nivara's generic
+# CRUD endpoints and prevent values such as "ten thousand" reaching Mongo.
+NUMERIC_FIELDS = {
+    "amount", "opening_balance", "current_balance", "current_value", "purchase_value", "estimated_value",
+    "outstanding", "principal", "sanctioned", "disbursed", "emi", "premium", "sum_insured",
+    "expected_contribution", "target_amount", "current_amount", "annual_rent", "amount_due", "amount_received",
+    "ownership_percent", "interest_rate", "annual_increase_percent", "tenure_months", "area",
+}
+PERCENT_FIELDS = {"ownership_percent", "interest_rate", "annual_increase_percent"}
+
+
+def validate_financial_payload(payload: dict) -> dict:
+    """Reject non-numeric, non-finite and negative financial inputs centrally.
+    Text fields remain deliberately open (apart from normal whitespace cleanup)."""
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=422, detail="A JSON object is required")
+    cleaned = dict(payload)
+    for key, value in payload.items():
+        if key in NUMERIC_FIELDS and value not in (None, ""):
+            if isinstance(value, bool):
+                raise HTTPException(status_code=422, detail=f"{key.replace('_', ' ').title()} must be a number")
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=422, detail=f"{key.replace('_', ' ').title()} must be a number")
+            if number != number or number in (float("inf"), float("-inf")) or number < 0:
+                raise HTTPException(status_code=422, detail=f"{key.replace('_', ' ').title()} must be a finite non-negative number")
+            if key in PERCENT_FIELDS and number > 100:
+                raise HTTPException(status_code=422, detail=f"{key.replace('_', ' ').title()} cannot exceed 100%")
+            cleaned[key] = round(number, 2)
+        elif isinstance(value, str):
+            cleaned[key] = value.strip()
+    return cleaned
+
+
+def normalize_date(value):
+    """Store every user-entered date as ISO YYYY-MM-DD, regardless of common input format."""
+    if value in (None, ""):
+        return value
+    text = str(value).strip()[:10]
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise HTTPException(status_code=400, detail="Use a valid date: YYYY-MM-DD (for example, 2026-09-20)")
+
+
 async def log_audit(actor: dict, action: str, entity: str, entity_id: str = None, meta: dict = None):
     await db.audit_events.insert_one({
         "actor": actor.get("email") if actor else "system",

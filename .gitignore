@@ -1,7 +1,38 @@
+# Python bytecode/cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+backend/.venv/
+
+# Node dependencies
+node_modules/
+**/node_modules/
+
+# Frontend builds
+build/
+dist/
+frontend/build/
+frontend/dist/
+
+# Environment files
 .env
 .env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
+!.env.example
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

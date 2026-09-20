@@ -22,6 +22,7 @@ export default function Accounts() {
     { key: "masked_number", label: "Account No. (last 4)" },
     { key: "opening_balance", label: "Opening Balance (₹)", type: "money", default: 0 },
     { key: "owner", label: "Owner", default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "status", label: "Status", type: "select", options: ["ACTIVE", "INACTIVE"], default: "ACTIVE" },
   ];
   const columns = [

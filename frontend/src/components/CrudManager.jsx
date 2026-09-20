@@ -93,7 +93,7 @@ export default function CrudManager({
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? `Edit ${title}` : `Add ${title}`} size="lg">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {fields.map((f) => (
-            <Field key={f.key} label={f.label + (f.required ? " *" : "")} className={f.full ? "sm:col-span-2" : ""}>
+            <Field key={f.key} label={f.label + (f.type === "date" ? " (YYYY-MM-DD)" : "") + (f.required ? " *" : "")} className={f.full ? "sm:col-span-2" : ""}>
               <FieldInput f={f} value={form[f.key]} onChange={set} />
             </Field>
           ))}

@@ -1,5 +1,6 @@
 import React from "react";
-import { PiggyBank } from "lucide-react";
+import { PiggyBank, Bot } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, StateBlock, Badge } from "../components/ui";
 import KpiCard from "../components/KpiCard";
@@ -8,6 +9,7 @@ import CrudManager from "../components/CrudManager";
 import { inr, todayISO } from "../lib/format";
 
 export default function Savings() {
+  const nav = useNavigate();
   const { data: s, loading, error, refetch } = useFetch("/savings/summary");
   const invSummary = useFetch("/investments");
   const family = useFetch("/family");
@@ -21,6 +23,7 @@ export default function Savings() {
     { key: "type", label: "Type", type: "select", options: ["SAVINGS", "FD", "RD", "CASH", "OTHER"], default: "SAVINGS", required: true },
     { key: "institution", label: "Institution" },
     { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
     { key: "interest_rate", label: "Interest %", type: "number" },
     { key: "start_date", label: "Start Date", type: "date" },
@@ -41,6 +44,7 @@ export default function Savings() {
     { key: "cost", label: "Invested (₹)", type: "money", required: true },
     { key: "current_value", label: "Current Value (₹)", type: "money", required: true },
     { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
   ];
   const invCols = [
     { key: "name", label: "Investment", render: (r) => <span className="font-medium text-ink">{r.name}</span> },
@@ -52,7 +56,7 @@ export default function Savings() {
 
   return (
     <>
-      <PageHeader title="Savings & Investments" subtitle="Deposits, savings instruments and market investments." icon={PiggyBank} />
+      <PageHeader title="Savings & Investments" subtitle="Deposits, savings instruments and market investments." icon={PiggyBank} actions={<button onClick={()=>nav("/smart-import")} className="inline-flex h-9 items-center gap-2 px-3 rounded-lg bg-brand text-white text-xs font-semibold"><Bot size={15}/> Smart import</button>} />
       <StateBlock loading={loading} error={error} onRetry={refetch}>
         {s && (
           <>

@@ -1,0 +1,8 @@
+{
+  "product": "Nivara Finance",
+  "current": "1.2.0",
+  "releases": [
+    {"version":"1.2.0","date":"2026-09-20","title":"Household operating system","summary":"Action-led planning, review workflow and cash-risk controls.","changes":["Action Center can record source-linked payments, mark items reviewed, resolve them, or postpone them.","Unified Review Inbox brings transactions and financial commitments into one searchable needs-review queue.","Cash outlook identifies the exact lowest projected balance and dates when cash can become tight.","Ownership rollups now include individual, family, farm/business and consolidated views.","Health check adds debt-to-income, EMI-risk, tax-document and scheduled contribution signals.","Financial Snapshot exports a self-attested workbook with ownership, commitments and linked-document index.","Added retirement, rental-yield, SIP step-up and lending-recovery calculators."],"internals":["Server-side numeric validation rejects non-finite, negative and out-of-range percentage values.","Version history is exposed through a stable API for future release automation."]},
+    {"version":"1.1.0","date":"2026-09-19","title":"Planner foundations","summary":"Calendar commitments, records and ownership foundation.","changes":["30-day commitments and past-due action awareness.","Recurring rent and farm lease collection support.","Document vault categories and baseline planning calculators."],"internals":["Improved operational error logging and cache invalidation after writes."]}
+  ]
+}

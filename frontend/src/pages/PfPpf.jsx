@@ -1,10 +1,11 @@
 import React from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Download } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { PageHeader, StateBlock, Badge } from "../components/ui";
+import { PageHeader, StateBlock, Badge, Button } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, TrendLine } from "../components/charts";
 import CrudManager from "../components/CrudManager";
+import { downloadEntity } from "../lib/export";
 import { inr } from "../lib/format";
 
 export default function PfPpf() {
@@ -13,13 +14,16 @@ export default function PfPpf() {
   const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
   const fields = [
-    { key: "kind", label: "Type", type: "select", options: ["PF", "PPF"], default: "PF", required: true },
+    { key: "kind", label: "Type", type: "select", options: ["PF", "PPF", "NPS"], default: "PF", required: true },
     { key: "institution", label: "Institution", placeholder: "EPFO / SBI", required: true },
     { key: "account_number", label: "Account No. (masked)" },
     { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "opening_balance", label: "Opening Balance (₹)", type: "money", default: 0 },
     { key: "current_balance", label: "Current Balance (₹)", type: "money", required: true },
     { key: "maturity_date", label: "Maturity Date", type: "date" },
+    { key: "next_contribution_date", label: "Next contribution due", type: "date" },
+    { key: "expected_contribution", label: "Expected contribution (₹)", type: "money" },
     { key: "notes", label: "Notes", type: "textarea", full: true },
   ];
   const cols = [
@@ -31,7 +35,8 @@ export default function PfPpf() {
 
   return (
     <>
-      <PageHeader title="PF & PPF" subtitle="Provident fund and public provident fund balances." icon={ShieldCheck} />
+      <PageHeader title="PF & PPF" subtitle="Provident fund and public provident fund balances." icon={ShieldCheck}
+        actions={<Button variant="secondary" size="sm" onClick={() => downloadEntity("pf_ppf", {}, "pf-ppf")}><Download size={15} /> Export Excel</Button>} />
       <StateBlock loading={loading} error={error} onRetry={refetch}>
         {s && (
           <>

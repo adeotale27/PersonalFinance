@@ -2,7 +2,7 @@
 from datetime import datetime
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
-from core import db, serialize, oid, now_utc, require_admin, round2
+from core import db, serialize, oid, now_utc, require_admin, round2, normalize_date, validate_financial_payload
 
 router = APIRouter(tags=["lending"])
 
@@ -78,10 +78,13 @@ async def lending_summary(direction: str = "LENT", user: dict = Depends(require_
 
 @router.post("/lending")
 async def create_lending(payload: dict, user: dict = Depends(require_admin)):
+    payload = validate_financial_payload(payload)
     payload["amount"] = round2(payload.get("amount", 0))
     payload.setdefault("direction", "LENT")
     payload.setdefault("repayments", [])
-    payload.setdefault("date", now_utc().date().isoformat())
+    payload["date"] = normalize_date(payload.get("date") or now_utc().date().isoformat())
+    if payload.get("due_date"):
+        payload["due_date"] = normalize_date(payload["due_date"])
     payload["created_at"] = now_utc()
     res = await db.lendings.insert_one(payload)
     return _enrich(await db.lendings.find_one({"_id": res.inserted_id}))
@@ -89,10 +92,14 @@ async def create_lending(payload: dict, user: dict = Depends(require_admin)):
 
 @router.put("/lending/{item_id}")
 async def update_lending(item_id: str, payload: dict, user: dict = Depends(require_admin)):
+    payload = validate_financial_payload(payload)
     payload.pop("id", None); payload.pop("_id", None)
     payload.pop("paid", None); payload.pop("outstanding", None)
     if "amount" in payload:
         payload["amount"] = round2(payload["amount"])
+    for key in ("date", "due_date"):
+        if key in payload and payload[key]:
+            payload[key] = normalize_date(payload[key])
     payload["updated_at"] = now_utc()
     await db.lendings.update_one({"_id": oid(item_id)}, {"$set": payload})
     return _enrich(await db.lendings.find_one({"_id": oid(item_id)}))
@@ -100,9 +107,19 @@ async def update_lending(item_id: str, payload: dict, user: dict = Depends(requi
 
 @router.post("/lending/{item_id}/repayment")
 async def add_repayment(item_id: str, payload: dict, user: dict = Depends(require_admin)):
+    payload = validate_financial_payload(payload)
+    loan = await db.lendings.find_one({"_id": oid(item_id), "deleted_at": {"$exists": False}})
+    if not loan:
+        raise HTTPException(status_code=404, detail="Lending record not found")
+    amount = round2(payload.get("amount", 0))
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Repayment amount must be greater than zero")
+    outstanding = _enrich(loan)["outstanding"]
+    if amount > outstanding + 0.009:
+        raise HTTPException(status_code=400, detail=f"Repayment cannot exceed outstanding balance of {outstanding:.2f}")
     entry = {
-        "date": payload.get("date") or now_utc().date().isoformat(),
-        "amount": round2(payload.get("amount", 0)),
+        "date": normalize_date(payload.get("date") or now_utc().date().isoformat()),
+        "amount": amount,
         "note": payload.get("note", ""),
     }
     await db.lendings.update_one({"_id": oid(item_id)}, {"$push": {"repayments": entry}})

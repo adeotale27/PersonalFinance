@@ -10,10 +10,36 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
-  background: #F6F7F9;
+  background:
+    radial-gradient(circle at top left, rgba(13, 148, 136, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.07), transparent 30%),
+    #F7F9FC;
   color: #0F172A;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
+
+#root {
+  min-height: 100vh;
+}
+
+.bg-surface, [data-testid="app-shell"], [data-testid="page-shell"], .card, [class*="Card"] { box-shadow: 0 12px 32px rgba(15, 23, 42, 0.045); }
+
+main,
+section,
+.card {
+  scroll-behavior: smooth;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.02em;
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid rgba(20, 184, 166, .3); outline-offset: 2px; }
+
+@keyframes float-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-up > * { animation: float-in .45s cubic-bezier(.16,1,.3,1) both; }
+.animate-fade-up > *:nth-child(2) { animation-delay: .04s; }
 
 ::selection { background: #CCFBF1; color: #042F2E; }
 
@@ -23,7 +49,7 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
 .num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
-.overline { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.overline { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; text-decoration: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

@@ -10,7 +10,7 @@ export default function Documents() {
   const memberOptions = (family.data || []).map((f) => ({ value: f.id, label: f.name }));
 
   const panels = {
-    all: <DocumentsPanel title="All Documents" memberOptions={memberOptions} showTaxFields defaultCategory="Other" deps={[family.data]} />,
+    all: <DocumentsPanel title="All Documents" memberOptions={memberOptions} showTaxFields showLinks defaultCategory="Other" deps={[family.data]} />,
     tax: <DocumentsPanel title="ITR & Income-Tax Documents" query="category=ITR" categories={["ITR", "Income Tax", "Form 16", "Tax Challan", "Other"]} memberOptions={memberOptions} showTaxFields defaultCategory="ITR" />,
     income: <DocumentsPanel title="Income Proofs (per family member)" query="category=Income Proof" categories={["Income Proof", "Salary Slip", "Bank Statement", "Other"]} memberOptions={memberOptions} showTaxFields defaultCategory="Income Proof" />,
     bank: <DocumentsPanel title="Bank & Financial" query="category=Bank" categories={["Bank", "Statement", "Passbook", "Cheque", "Other"]} defaultCategory="Bank" />,

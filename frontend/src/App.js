@@ -23,6 +23,18 @@ import Family from "./pages/Family";
 import AccessControl from "./pages/AccessControl";
 import Documents from "./pages/Documents";
 import Settings from "./pages/Settings";
+import Losses from "./pages/Losses";
+import Diary from "./pages/Diary";
+import Notifications from "./pages/Notifications";
+import ErrorLog from "./pages/ErrorLog";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Necessities from "./pages/Necessities";
+import Goals from "./pages/Goals";
+import Planner from "./pages/Planner";
+import Calculators from "./pages/Calculators";
+import ReviewInbox from "./pages/ReviewInbox";
+import VersionControl from "./pages/VersionControl";
+import SmartImport from "./pages/SmartImport";
 
 function Protected({ children }) {
   const { user, checking } = useAuth();
@@ -55,6 +67,17 @@ function Shell() {
       <Route path="/access-control" element={<Protected><AccessControl /></Protected>} />
       <Route path="/documents" element={<Protected><Documents /></Protected>} />
       <Route path="/settings" element={<Protected><Settings /></Protected>} />
+      <Route path="/losses" element={<Protected><Losses /></Protected>} />
+      <Route path="/diary" element={<Protected><Diary /></Protected>} />
+      <Route path="/notifications" element={<Protected><Notifications /></Protected>} />
+      <Route path="/error-log" element={<Protected><ErrorLog /></Protected>} />
+      <Route path="/necessities" element={<Protected><Necessities /></Protected>} />
+      <Route path="/goals" element={<Protected><Goals /></Protected>} />
+      <Route path="/planner" element={<Protected><Planner /></Protected>} />
+      <Route path="/calculators" element={<Protected><Calculators /></Protected>} />
+      <Route path="/review" element={<Protected><ReviewInbox /></Protected>} />
+      <Route path="/versions" element={<Protected><VersionControl /></Protected>} />
+      <Route path="/smart-import" element={<Protected><SmartImport /></Protected>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -62,10 +85,6 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
-    </AuthProvider>
+    <ErrorBoundary><AuthProvider><BrowserRouter><Shell /></BrowserRouter></AuthProvider></ErrorBoundary>
   );
 }

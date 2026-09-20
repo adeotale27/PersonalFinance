@@ -25,7 +25,7 @@ export default function Lending() {
   const refresh = () => { summary.refetch(); list.refetch(); };
   const openAdd = () => { setForm({ date: todayISO() }); setErr(""); setModal({ mode: "add" }); };
   const openEdit = (row) => { setForm({ ...row }); setErr(""); setModal({ mode: "edit", row }); };
-  const openPay = (row) => { setForm({ date: todayISO() }); setErr(""); setModal({ mode: "pay", row }); };
+  const openPay = (row) => { setForm({ date: todayISO(), amount: "" }); setErr(""); setModal({ mode: "pay", row }); };
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
@@ -41,7 +41,9 @@ export default function Lending() {
         if (modal.mode === "edit") await api.put(`/lending/${modal.row.id}`, body);
         else await api.post("/lending", body);
       }
+      const overdueDueDate = modal.mode !== "pay" && form.due_date && form.due_date < todayISO();
       setModal(null); refresh();
+      if (overdueDueDate) window.dispatchEvent(new Event("nivara:notifications-changed"));
     } catch (e) { setErr(e.response ? apiError(e) : e.message); } finally { setBusy(false); }
   };
 
@@ -124,10 +126,11 @@ export default function Lending() {
         {modal?.mode === "pay" ? (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Amount (₹) *"><Input type="number" autoFocus value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} data-testid="pay-amount" /></Field>
+              <Field label="Amount (₹) *"><Input type="number" max={modal.row.outstanding} autoFocus value={form.amount || ""} onChange={(e) => set("amount", e.target.value)} data-testid="pay-amount" /></Field>
               <Field label="Date"><Input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} /></Field>
             </div>
             <Field label="Note"><Input value={form.note || ""} onChange={(e) => set("note", e.target.value)} /></Field>
+            <p className="text-xs text-faint">Record any partial {lent ? "recovery" : "repayment"}. Remaining balance: <span className="font-semibold text-ink">{inr(modal.row.outstanding)}</span></p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -140,6 +143,7 @@ export default function Lending() {
               <Field label="Due date"><Input type="date" value={form.due_date || ""} onChange={(e) => set("due_date", e.target.value)} /></Field>
               <Field label="Interest %"><Input type="number" value={form.interest_rate || ""} onChange={(e) => set("interest_rate", e.target.value)} /></Field>
             </div>
+            {form.due_date && form.due_date < todayISO() && <p className="-mt-1 text-xs text-expense">This due date has already passed. Saving will create an overdue alert.</p>}
             <Field label="Purpose"><Input value={form.purpose || ""} onChange={(e) => set("purpose", e.target.value)} /></Field>
             <Field label="Notes"><Textarea value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} /></Field>
           </div>

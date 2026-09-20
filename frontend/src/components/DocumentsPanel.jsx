@@ -5,12 +5,13 @@ import { useFetch } from "../lib/useFetch";
 import api, { apiError, docUrl } from "../lib/api";
 import { fmtDate } from "../lib/format";
 
-const DEFAULT_CATS = ["Project", "Bank", "Payment", "Contract", "Invoice", "Receipt", "Drawing", "Certificate", "ITR", "Income Tax", "Income Proof", "Identity", "Property", "Insurance", "Other"];
+const DEFAULT_CATS = ["Project", "Bank", "Payment", "Contract", "Invoice", "Receipt", "Loan", "Lending", "Goal", "Investment", "Drawing", "Certificate", "ITR", "Income Tax", "Income Proof", "Identity", "Property", "Insurance", "Other"];
 
-export default function DocumentsPanel({ projectId, title = "Documents", query = "", categories, memberOptions, showOfficial = false, showTaxFields = false, defaultCategory = "Other", onChanged }) {
+export default function DocumentsPanel({ projectId, title = "Documents", query = "", categories, memberOptions, showOfficial = false, showTaxFields = false, showLinks = false, defaultCategory = "Other", onChanged }) {
   const base = projectId ? `/documents?related_entity_id=${projectId}` : "/documents";
   const url = query ? `${base}${base.includes("?") ? "&" : "?"}${query}` : base;
   const { data, loading, error, refetch } = useFetch(url, [url]);
+  const links = useFetch("/documents/link-options");
   const fileRef = useRef();
   const cats = categories || DEFAULT_CATS;
   const [open, setOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function DocumentsPanel({ projectId, title = "Documents", query =
       if (showOfficial) fd.append("official", form.official || "true");
       if (showTaxFields && form.financial_year) fd.append("financial_year", form.financial_year);
       if (memberOptions && form.family_member_id) fd.append("family_member_id", form.family_member_id);
+      if (showLinks && form.related_entity_id) { fd.append("related_entity_id", form.related_entity_id); fd.append("related_entity_type", form.related_entity_type); }
       if (projectId) { fd.append("related_entity_id", projectId); fd.append("related_entity_type", "project"); fd.append("project_id", projectId); }
       await api.post("/documents", fd, { headers: { "Content-Type": "multipart/form-data" } });
       setOpen(false); setFile(null); setForm({ category: defaultCategory, official: "true" });
@@ -53,7 +55,7 @@ export default function DocumentsPanel({ projectId, title = "Documents", query =
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-line">
-        <h3 className="font-display font-semibold text-ink">{title}</h3>
+        <div><h3 className="font-display font-semibold text-ink">{title}</h3>{!projectId && <p className="text-xs text-subink mt-0.5">Keep policy, loan, property and payment records beside your financial plan.</p>}</div>
         <Button size="sm" onClick={() => { setErr(""); setFile(null); setForm({ category: defaultCategory, official: "true" }); setOpen(true); }} data-testid="upload-doc"><Upload size={15} /> Upload</Button>
       </div>
       <StateBlock loading={loading} error={error} empty={docs.length === 0} emptyText="No documents uploaded yet." onRetry={refetch}>
@@ -90,6 +92,7 @@ export default function DocumentsPanel({ projectId, title = "Documents", query =
             {showOfficial && <Field label="Paperwork Type"><Select value={form.official} onChange={(e) => set("official", e.target.value)} data-testid="doc-official"><option value="true">Official</option><option value="false">Unofficial</option></Select></Field>}
             {showTaxFields && <Field label="Financial Year"><Input value={form.financial_year || ""} onChange={(e) => set("financial_year", e.target.value)} placeholder="2025-26" /></Field>}
             {memberOptions && <Field label="Belongs To"><Select value={form.family_member_id || ""} onChange={(e) => set("family_member_id", e.target.value)}><option value="">Self</option>{memberOptions.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</Select></Field>}
+            {showLinks && <Field label="Attach to record" className="col-span-2"><Select value={form.related_entity_id || ""} onChange={(e) => { const opt=(links.data||[]).find(x=>x.id===e.target.value); set("related_entity_id", e.target.value); set("related_entity_type", opt?.type || ""); }}><option value="">No linked record</option>{(links.data||[]).map((o)=><option key={`${o.type}-${o.id}`} value={o.id}>{o.type.replace(/_/g," ")} · {o.label}</option>)}</Select></Field>}
           </div>
           <Field label="Notes"><Input value={form.notes || ""} onChange={(e) => set("notes", e.target.value)} /></Field>
           {err && <div className="text-sm text-expense bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</div>}

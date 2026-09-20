@@ -1,14 +1,17 @@
 import React from "react";
-import { Landmark } from "lucide-react";
+import { Download, Landmark } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { PageHeader, StateBlock, Badge, StatusBadge, Card } from "../components/ui";
+import { PageHeader, StateBlock, Badge, StatusBadge, Card, Button } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import CrudManager from "../components/CrudManager";
 import { inr, fmtDate } from "../lib/format";
+import { downloadEntity } from "../lib/export";
 
 export default function Loans() {
   const { data: s, loading, error, refetch } = useFetch("/loans/summary");
   const list = useFetch("/loans");
+  const family = useFetch("/family");
+  const ownerOpts = ["Self", ...((family.data || []).map((f) => f.name))];
 
   const fields = [
     { key: "name", label: "Loan Name", required: true, full: true },
@@ -22,7 +25,10 @@ export default function Loans() {
     { key: "emi", label: "EMI (₹)", type: "money" },
     { key: "interest_rate", label: "Interest %", type: "number" },
     { key: "start_date", label: "Start Date", type: "date" },
+    { key: "disbursement_date", label: "Disbursement Date", type: "date" },
     { key: "next_due_date", label: "Next EMI Due", type: "date" },
+    { key: "owner", label: "Owner", type: "select", options: ownerOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "maturity_date", label: "Maturity Date", type: "date" },
     { key: "tenure_months", label: "Tenure (months)", type: "number" },
     { key: "status", label: "Status", type: "select", options: ["Open", "Closed"], default: "Open" },
@@ -31,7 +37,8 @@ export default function Loans() {
 
   return (
     <>
-      <PageHeader title="Loans" subtitle="Home, vehicle and personal loans with repayment progress." icon={Landmark} />
+      <PageHeader title="Loans" subtitle="Home, vehicle and personal loans with repayment progress." icon={Landmark}
+        actions={<Button variant="secondary" size="sm" onClick={() => downloadEntity("loans", {}, "loans")}><Download size={15} /> Export Excel</Button>} />
       <StateBlock loading={loading} error={error} onRetry={refetch}>
         {s && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

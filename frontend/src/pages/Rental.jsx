@@ -14,10 +14,16 @@ export default function Rental() {
 
   const propFields = [
     { key: "name", label: "Property Name", required: true, full: true },
+    { key: "owner", label: "Owner", default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
+    { key: "current_value", label: "Current value (₹)", type: "money" },
     { key: "address", label: "Address", full: true },
     { key: "image_url", label: "Image URL", full: true },
     { key: "tenant", label: "Tenant (creates a unit)" },
     { key: "monthly_rent", label: "Monthly Rent (₹)", type: "money" },
+    { key: "rent_start_date", label: "Rent Start Date", type: "date" },
+    { key: "rent_due_day", label: "Due Day (1–31)", type: "number", default: 1 },
+    { key: "annual_increase_percent", label: "Annual Increase %", type: "number", default: 0 },
     { key: "deposit", label: "Deposit (₹)", type: "money" },
   ];
   const propCols = [
@@ -71,9 +77,9 @@ export default function Rental() {
         <CrudManager title="Properties" endpoint="/rental/properties" addLabel="Add property" fields={propFields} columns={propCols}
           onChanged={() => { refetch(); props.refetch(); }}
           transform={(p) => {
-            const { tenant, monthly_rent, deposit, ...rest } = p;
+            const { tenant, monthly_rent, deposit, rent_start_date, rent_due_day, annual_increase_percent, ...rest } = p;
             const body = { ...rest };
-            if (monthly_rent) body.units = [{ name: "Unit 1", tenant: tenant || "", monthly_rent: monthly_rent || 0, deposit: deposit || 0, status: "OCCUPIED" }];
+            if (monthly_rent) body.units = [{ name: "Unit 1", tenant: tenant || "", monthly_rent: monthly_rent || 0, deposit: deposit || 0, rent_start_date: p.rent_start_date, rent_due_day: p.rent_due_day || 1, annual_increase_percent: p.annual_increase_percent || 0, recurring_enabled: true, status: "OCCUPIED" }];
             return body;
           }} />
         <CrudManager title="Rent Collection" endpoint="/rental/payments" addLabel="Record rent" fields={payFields} columns={payCols} onChanged={refetch} deps={[props.data?.length]} />

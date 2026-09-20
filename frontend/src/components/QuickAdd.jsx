@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { TrendingUp, CreditCard, Handshake, Landmark } from "lucide-react";
+import { TrendingUp, CreditCard, Handshake, Landmark, ImageUp, Sparkles, Loader2 } from "lucide-react";
 import { Modal, Field, Input, Select, Textarea, Button, cx, DatalistInput } from "./ui";
 import api, { apiError } from "../lib/api";
 import { todayISO } from "../lib/format";
@@ -19,10 +19,12 @@ export default function QuickAdd({ open, onClose, onDone }) {
   const [projects, setProjects] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [proof, setProof] = useState(null);
+  const [extracting, setExtracting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setForm({ date: todayISO() }); setError(""); setType("EXPENSE");
+    setForm({ date: todayISO() }); setError(""); setType("EXPENSE"); setProof(null);
     Promise.all([
       api.get("/accounts").then((r) => setAccounts(r.data)).catch(() => {}),
       api.get("/settings").then((r) => setSettings(r.data)).catch(() => {}),
@@ -48,6 +50,9 @@ export default function QuickAdd({ open, onClose, onDone }) {
           party: form.party || undefined,
           payment_mode: form.payment_mode || "UPI",
           description: form.description || "",
+          source_image_id: form.source_image_id || null,
+          transaction_reference: form.transaction_reference || null,
+          verification_status: form.source_image_id ? "VERIFIED" : "MANUAL",
         });
       } else {
         await api.post("/lending", {
@@ -62,6 +67,19 @@ export default function QuickAdd({ open, onClose, onDone }) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const analyseProof = async (file) => {
+    if (!file) return;
+    setExtracting(true); setError("");
+    try {
+      const body = new FormData(); body.append("file", file);
+      const { data } = await api.post("/proofs/extract", body, { headers: { "Content-Type": "multipart/form-data" } });
+      const x = data.extraction || {};
+      setProof({ name: file.name, confidence: x.confidence });
+      setType("INCOME");
+      setForm((f) => ({ ...f, amount: x.amount || f.amount, payment_mode: x.payment_mode || f.payment_mode || "UPI", transaction_reference: x.transaction_reference || f.transaction_reference, source_image_id: x.document_id, category: f.category || "Rental" }));
+    } catch (e) { setError(apiError(e)); } finally { setExtracting(false); }
   };
 
   const cats = type === "INCOME" ? settings?.income_categories : settings?.expense_categories;
@@ -88,6 +106,11 @@ export default function QuickAdd({ open, onClose, onDone }) {
 
         {isTxn && (
           <>
+            <div className="rounded-xl border border-dashed border-teal-300 bg-teal-50/60 p-3 flex flex-wrap items-center justify-between gap-3">
+              <div><div className="text-sm font-semibold text-ink flex gap-1.5 items-center"><Sparkles size={15} className="text-brand"/> Upload payment proof</div><p className="text-xs text-subink mt-0.5">Extract amount, payment method and reference; you review before saving.</p></div>
+              <label className="cursor-pointer"><input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={(e) => analyseProof(e.target.files?.[0])}/><span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-teal-200 text-sm font-semibold text-brand">{extracting ? <Loader2 size={15} className="animate-spin"/> : <ImageUp size={15}/>} {extracting ? "Reading…" : "Upload"}</span></label>
+              {proof && <div className="w-full text-xs text-income">Proof attached: {proof.name} · extraction confidence {proof.confidence}% · review the fields below.</div>}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Category">
                 <Select value={form.category || ""} onChange={(e) => set("category", e.target.value)} data-testid="quick-category">
@@ -108,6 +131,7 @@ export default function QuickAdd({ open, onClose, onDone }) {
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>
             </Field>
+            {form.transaction_reference && <Field label="Transaction reference / UTR"><Input value={form.transaction_reference} onChange={(e) => set("transaction_reference", e.target.value)} /></Field>}
           </>
         )}
 

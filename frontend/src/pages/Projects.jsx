@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FolderKanban, Plus, MapPin, ArrowRight } from "lucide-react";
+import { FolderKanban, Plus, MapPin, ArrowRight, Download } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, StateBlock, Card, Button, Modal, Field, Input, Select, Textarea, Badge, StatusBadge } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import api, { apiError } from "../lib/api";
+import { downloadEntity } from "../lib/export";
 import { inr, todayISO } from "../lib/format";
 
 export default function Projects() {
@@ -32,7 +33,12 @@ export default function Projects() {
   return (
     <>
       <PageHeader title="Projects" subtitle="Construction and other managed initiatives." icon={FolderKanban}
-        actions={<Button size="sm" onClick={() => { setForm({ status: "PLANNING", type: "Construction", start_date: todayISO() }); setErr(""); setOpen(true); }} data-testid="add-project"><Plus size={15} /> New project</Button>} />
+        actions={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => downloadEntity("projects", {}, "projects")}><Download size={15} /> Export Excel</Button>
+            <Button size="sm" onClick={() => { setForm({ status: "PLANNING", type: "Construction", start_date: todayISO() }); setErr(""); setOpen(true); }} data-testid="add-project"><Plus size={15} /> New project</Button>
+          </>
+        } />
 
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
         <KpiCard label="Projects" value={String(projects.length)} tone="brand" testid="proj-count" />

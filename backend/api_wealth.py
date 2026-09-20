@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 from core import db, serialize, oid, now_utc, require_admin, round2
 from api_finance import compute_account_balances
 from crud import make_crud_router
+from financial_services import net_worth_history, snapshot_net_worth
 
 router = APIRouter(tags=["wealth"])
 
@@ -87,7 +88,14 @@ async def add_savings_contribution(item_id: str, payload: dict, user: dict = Dep
 
 @router.get("/networth")
 async def net_worth(user: dict = Depends(require_admin)):
-    return await networth_data()
+    data = await networth_data()
+    await snapshot_net_worth(data["net_worth"], data["total_assets"], data["total_liabilities"])
+    return data
+
+
+@router.get("/networth/history")
+async def net_worth_history_endpoint(user: dict = Depends(require_admin)):
+    return {"items": await net_worth_history(), "note": "Only recorded valuation snapshots are shown; no historical values are estimated."}
 
 
 async def networth_data():

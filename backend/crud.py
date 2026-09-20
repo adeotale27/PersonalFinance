@@ -1,6 +1,6 @@
 """Generic CRUD router factory for admin-owned collections."""
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
-from core import db, serialize, oid, now_utc, require_admin, log_audit
+from core import db, serialize, oid, now_utc, require_admin, log_audit, normalize_date, validate_financial_payload
 
 
 def make_crud_router(name: str, collection: str, pre_save=None, list_sort=None):
@@ -10,6 +10,12 @@ def make_crud_router(name: str, collection: str, pre_save=None, list_sort=None):
     """
     router = APIRouter(prefix=f"/{name}", tags=[name])
     coll = db[collection]
+
+    def normalize_dates(payload):
+        for key, value in list(payload.items()):
+            if key == "date" or key.endswith("_date"):
+                payload[key] = normalize_date(value)
+        return payload
 
     @router.get("")
     async def list_items(request: Request, user: dict = Depends(require_admin)):
@@ -24,6 +30,8 @@ def make_crud_router(name: str, collection: str, pre_save=None, list_sort=None):
 
     @router.post("")
     async def create_item(payload: dict, user: dict = Depends(require_admin)):
+        payload = validate_financial_payload(payload)
+        payload = normalize_dates(payload)
         if pre_save:
             payload = pre_save(payload, None)
         payload["created_at"] = now_utc()
@@ -46,6 +54,7 @@ def make_crud_router(name: str, collection: str, pre_save=None, list_sort=None):
         existing = await coll.find_one({"_id": oid(item_id)})
         if not existing:
             raise HTTPException(status_code=404, detail=f"{name} not found")
+        payload = normalize_dates(validate_financial_payload(payload))
         if pre_save:
             payload = pre_save(payload, existing)
         payload.pop("id", None)

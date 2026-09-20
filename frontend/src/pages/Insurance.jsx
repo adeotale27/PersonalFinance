@@ -1,10 +1,11 @@
 import React from "react";
-import { Umbrella, CalendarClock, Car, Bike, HeartPulse, Shield } from "lucide-react";
+import { Umbrella, CalendarClock, Car, Bike, HeartPulse, Shield, Download } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { PageHeader, StateBlock, Card, Badge } from "../components/ui";
+import { PageHeader, StateBlock, Card, Badge, Button } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, Donut } from "../components/charts";
 import CrudManager from "../components/CrudManager";
+import { downloadEntity } from "../lib/export";
 import { inr, fmtDate } from "../lib/format";
 
 const TYPE_ICON = { Car, Bike, Health: HeartPulse, Life: Shield, Home: Shield, Other: Shield };
@@ -22,6 +23,8 @@ export default function Insurance() {
     { key: "provider", label: "Provider / Insurer" },
     { key: "policy_number", label: "Policy Number" },
     { key: "insured", label: "Insured", type: "select", options: insuredOpts, default: "Self" },
+    { key: "owner", label: "Policy owner", type: "select", options: insuredOpts, default: "Self" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
     { key: "asset_ref", label: "Asset / Vehicle No." },
     { key: "premium", label: "Premium (₹)", type: "money", required: true },
     { key: "frequency", label: "Frequency", type: "select", options: ["Yearly", "Half-Yearly", "Quarterly", "Monthly"], default: "Yearly" },
@@ -41,7 +44,8 @@ export default function Insurance() {
 
   return (
     <>
-      <PageHeader title="Insurance" subtitle="Vehicle, health and life cover with premium & renewal tracking." icon={Umbrella} />
+      <PageHeader title="Insurance" subtitle="Vehicle, health and life cover with premium & renewal tracking." icon={Umbrella}
+        actions={<Button variant="secondary" size="sm" onClick={() => downloadEntity("insurance", {}, "insurance")}><Download size={15} /> Export Excel</Button>} />
       <StateBlock loading={loading} error={error} onRetry={refetch}>
         {s && (
           <>

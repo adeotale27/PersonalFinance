@@ -1,14 +1,15 @@
 import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
 import { Button, Input, Field } from "../components/ui";
-import { ShieldCheck, TrendingUp, Handshake, Building2 } from "lucide-react";
+import { ShieldCheck, TrendingUp, Handshake, Building2, Eye, EyeOff, LockKeyhole } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("admin@nivara.app");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -26,7 +27,7 @@ export default function Login() {
         <div className="relative flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl bg-white text-brand-dark flex items-center justify-center font-display font-extrabold text-xl">N</div>
           <div>
-            <div className="font-display font-bold text-xl">Nivara</div>
+            <div className="font-display font-bold text-xl">Nivara Finance</div>
             <div className="text-xs text-teal-200">Financial Operating System</div>
           </div>
         </div>
@@ -49,17 +50,17 @@ export default function Login() {
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <div className="w-11 h-11 rounded-xl bg-brand text-white flex items-center justify-center font-display font-extrabold text-xl">N</div>
-            <div><div className="font-display font-bold text-xl text-ink">Nivara</div><div className="text-xs text-faint">Financial OS</div></div>
+            <div><div className="font-display font-bold text-xl text-ink">Nivara Finance</div><div className="text-xs text-faint">Personal Financial OS</div></div>
           </div>
           <h2 className="font-display text-2xl font-bold text-ink mb-1">Welcome back</h2>
-          <p className="text-sm text-subink mb-6">Sign in to your admin command center.</p>
+          <p className="text-sm text-subink mb-6">Your private finance workspace, ready when you are.</p>
           <form onSubmit={submit} className="space-y-4">
             <Field label="Email"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@nivara.app" data-testid="login-email" required /></Field>
-            <Field label="Password"><Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" data-testid="login-password" required /></Field>
+            <Field label="Password"><div className="relative"><Input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" className="pr-11" data-testid="login-password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-2 p-1 text-faint hover:text-ink" aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div></Field>
             {error && <div className="text-sm text-expense bg-rose-50 border border-rose-200 rounded-lg px-3 py-2" data-testid="login-error">{error}</div>}
             <Button type="submit" size="lg" className="w-full" disabled={loading} data-testid="login-submit">{loading ? "Signing in…" : "Sign in"}</Button>
           </form>
-          <p className="text-xs text-faint mt-6 text-center">Demo admin: <span className="num text-subink">admin@nivara.app</span> · <span className="num text-subink">Nivara@2026</span></p>
+          <p className="text-xs text-faint mt-6 text-center flex justify-center items-center gap-1.5"><LockKeyhole size={12}/> Your information stays protected in this workspace.</p>
         </div>
       </div>
     </div>

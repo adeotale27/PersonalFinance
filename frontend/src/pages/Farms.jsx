@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { Sprout, MapPin, Leaf } from "lucide-react";
+import { Sprout, MapPin, Leaf, Download } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
-import { PageHeader, StateBlock, Card, Badge, Segmented } from "../components/ui";
+import { PageHeader, StateBlock, Card, Badge, Segmented, Button, Modal, Field, Input } from "../components/ui";
 import KpiCard from "../components/KpiCard";
 import { ChartCard, CashFlowArea } from "../components/charts";
 import CrudManager from "../components/CrudManager";
+import { downloadEntity } from "../lib/export";
 import { inr, todayISO } from "../lib/format";
+import api, { apiError } from "../lib/api";
 
 export default function Farms() {
   const { data: s, loading, error, refetch } = useFetch("/farms/summary");
@@ -22,6 +24,15 @@ export default function Farms() {
     { key: "area", label: "Area", type: "number" },
     { key: "area_unit", label: "Unit", type: "select", options: ["acre", "hectare", "guntha", "bigha"], default: "acre" },
     { key: "location", label: "Location", full: true },
+    { key: "owner", label: "Owner / entity", default: "Farm / business" },
+    { key: "ownership_percent", label: "Ownership %", type: "number", default: 100 },
+    { key: "estimated_value", label: "Estimated value (₹)", type: "money" },
+    { key: "annual_rent_enabled", label: "Rented out yearly? (Yes/No)", type: "select", options: [{ value: true, label: "Yes" }, { value: false, label: "No" }], default: false },
+    { key: "tenant", label: "Yearly Lease Tenant" },
+    { key: "annual_rent", label: "Annual Rent (₹)", type: "money" },
+    { key: "lease_start_date", label: "Lease Start Date", type: "date" },
+    { key: "annual_rent_due_date", label: "Annual Rent Due Date", type: "date" },
+    { key: "annual_increase_percent", label: "Annual Increase %", type: "number", default: 0 },
     { key: "notes", label: "Notes", type: "textarea", full: true },
   ];
   const farmCols = [
@@ -51,15 +62,17 @@ export default function Farms() {
 
   return (
     <>
-      <PageHeader title="Farms & Farming" subtitle="Per-farm income & expense ledger for your guava farms." icon={Sprout} />
+      <PageHeader title="Farms & Farming" subtitle="Per-farm income & expense ledger for your guava farms." icon={Sprout}
+        actions={<Button variant="secondary" size="sm" onClick={() => downloadEntity("farms", {}, "farms")}><Download size={15} /> Export Excel</Button>} />
       <StateBlock loading={loading} error={error} onRetry={refetch}>
         {s && (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
               <KpiCard label="Farm Income" raw={s.total_income} tone="income" testid="farm-income" />
               <KpiCard label="Farm Expense" raw={s.total_expense} tone="expense" testid="farm-expense" />
               <KpiCard label="Net Profit" raw={s.net} tone={s.net >= 0 ? "brand" : "expense"} testid="farm-net" />
               <KpiCard label="Farms" value={String(s.count)} tone="violet" icon={Sprout} testid="farm-count" />
+              <KpiCard label="Yearly Rent Collected" raw={s.annual_rent_received} tone="amber" testid="farm-rent-collected" />
             </div>
             <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
               {s.per_farm.map((f) => (
@@ -86,7 +99,9 @@ export default function Farms() {
       </StateBlock>
 
       <div className="space-y-6">
-        <CrudManager title="Farms" endpoint="/farms" addLabel="Add farm" fields={farmFields} columns={farmCols} onChanged={() => { refetch(); farms.refetch(); }} />
+        <CrudManager title="Farms" endpoint="/farms" addLabel="Add farm" fields={farmFields} columns={farmCols} onChanged={() => { refetch(); farms.refetch(); }}
+          transform={(farm) => ({ ...farm, annual_rent_enabled: farm.annual_rent_enabled === true || farm.annual_rent_enabled === "true" })} />
+        <AnnualRentCollection onChanged={refetch} />
         <div>
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <h3 className="font-display font-semibold text-ink px-1">Farm Ledger</h3>
@@ -100,4 +115,34 @@ export default function Farms() {
       </div>
     </>
   );
+}
+
+function AnnualRentCollection({ onChanged }) {
+  const rents = useFetch("/farms/rent-payments");
+  const [selected, setSelected] = useState(null);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const receive = async () => {
+    const value = parseFloat(amount);
+    if (!value || value <= 0) { setError("Enter a valid received amount"); return; }
+    setBusy(true); setError("");
+    try {
+      await api.post(`/farms/rent-payments/${selected.id}/receive`, { amount: value });
+      setSelected(null); setAmount(""); rents.refetch(); onChanged();
+    } catch (e) { setError(e.response ? apiError(e) : e.message); } finally { setBusy(false); }
+  };
+
+  const rows = rents.data || [];
+  return <Card className="overflow-hidden">
+    <div className="px-5 py-4 border-b border-line"><h3 className="font-display font-semibold text-ink">Yearly Farm Rent</h3><p className="text-xs text-faint mt-0.5">Annual lease dues are created automatically from each farm’s lease settings.</p></div>
+    <StateBlock loading={rents.loading} error={rents.error} empty={rows.length === 0} emptyText="No yearly farm leases configured yet." onRetry={rents.refetch}>
+      <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="bg-muted/60 text-faint overline border-b border-line"><tr><th className="px-4 py-2.5">Farm / Tenant</th><th className="px-4 py-2.5">Year</th><th className="px-4 py-2.5 text-right">Due</th><th className="px-4 py-2.5 text-right">Received</th><th className="px-4 py-2.5 text-right">Balance</th><th className="px-4 py-2.5" /></tr></thead><tbody>{rows.map((r) => <tr key={r.id} className="border-b border-line/70"><td className="px-4 py-3"><div className="font-medium text-ink">{r.farm_name}</div><div className="text-xs text-faint">{r.tenant || "—"}</div></td><td className="px-4 py-3">{r.period}</td><td className="px-4 py-3 text-right num">{inr(r.amount_due)}</td><td className="px-4 py-3 text-right num text-income">{inr(r.amount_received)}</td><td className="px-4 py-3 text-right num font-semibold">{inr(Math.max(r.amount_due - r.amount_received, 0))}</td><td className="px-4 py-3 text-right">{r.amount_received < r.amount_due && <Button size="sm" variant="secondary" onClick={() => { setSelected(r); setAmount(""); setError(""); }}>Record payment</Button>}</td></tr>)}</tbody></table></div>
+    </StateBlock>
+    <Modal open={!!selected} onClose={() => setSelected(null)} title={`Record farm rent — ${selected?.farm_name}`}>
+      <Field label={`Amount received (max ${inr(Math.max((selected?.amount_due || 0) - (selected?.amount_received || 0), 0))})`}><Input type="number" autoFocus value={amount} max={Math.max((selected?.amount_due || 0) - (selected?.amount_received || 0), 0)} onChange={(e) => setAmount(e.target.value)} /></Field>
+      {error && <div className="text-sm text-expense mt-3">{error}</div>}<div className="flex gap-2 pt-4"><Button variant="secondary" className="flex-1" onClick={() => setSelected(null)}>Cancel</Button><Button className="flex-1" disabled={busy} onClick={receive}>{busy ? "Saving…" : "Save payment"}</Button></div>
+    </Modal>
+  </Card>;
 }

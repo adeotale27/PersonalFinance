@@ -3,6 +3,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends
 from core import db, serialize, now_utc, require_admin, round2
 from api_wealth import networth_data
+from financial_services import search_financial_records, snapshot_net_worth
 
 router = APIRouter(tags=["dashboard"])
 
@@ -10,6 +11,7 @@ router = APIRouter(tags=["dashboard"])
 @router.get("/dashboard/overview")
 async def overview(user: dict = Depends(require_admin)):
     nw = await networth_data()
+    await snapshot_net_worth(nw["net_worth"], nw["total_assets"], nw["total_liabilities"])
     now = now_utc()
     this_month = now.strftime("%Y-%m")
 
@@ -74,7 +76,7 @@ async def overview(user: dict = Depends(require_admin)):
     if unpaid_rent > 0:
         attention.append({"type": "unpaid_rent", "label": "Outstanding rent to collect", "value": unpaid_rent, "path": "/rental"})
     if borrow_out > 0:
-        attention.append({"type": "borrowing", "label": "Outstanding borrowings", "value": round2(borrow_out), "path": "/lending?tab=borrowing"})
+        attention.append({"type": "borrowing", "label": "Outstanding borrowings", "value": round2(borrow_out), "path": "/lending?tab=BORROWED"})
     for p in projects:
         spent = round2(sum(round2(t.get("amount", 0)) for t in txns if t.get("project_id") == str(p["_id"]) and t.get("type") == "EXPENSE"))
         if p.get("budget", 0) and spent > round2(p.get("budget", 0)):
@@ -123,7 +125,21 @@ async def overview(user: dict = Depends(require_admin)):
         "allocation": nw["allocation"],
         "attention": attention,
         "recent_activity": recent,
+        "cash_position": {
+            "available_now": round2(nw["breakdown"]["bank"] + nw["breakdown"]["cash"]),
+            "expected_receivables": round2(lend_out + unpaid_rent),
+            "upcoming_obligations": round2(borrow_out),
+        },
+        "liability_allocation": [
+            {"name": "Loans", "value": nw["liability_breakdown"]["loans"]},
+            {"name": "Borrowings", "value": nw["liability_breakdown"]["borrowings"]},
+        ],
     }
+
+
+@router.get("/search")
+async def financial_search(q: str = "", user: dict = Depends(require_admin)):
+    return {"items": await search_financial_records(q)}
 
 
 @router.get("/dashboard/cashflow")
