@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, TrendingUp, CreditCard, Handshake, Inbox,
   PiggyBank, ShieldCheck, Building2, Scale, FolderKanban, Users,
-  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search,
+  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search, Sparkles,
 } from "lucide-react";
 import { cx } from "./ui";
 import { useAuth } from "../lib/auth";
@@ -65,10 +65,10 @@ const MOBILE = [
 function Brand({ version, onVersion }) {
   return (
     <div className="flex items-center gap-2.5">
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-display font-extrabold text-lg shadow-lg shadow-teal-900/15">N</div>
+      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a5cff] to-[#14c9e8] text-white flex items-center justify-center shadow-lg shadow-indigo-900/20"><Sparkles size={16} strokeWidth={2.7}/></div>
       <div className="leading-tight">
-        <div className="font-display font-bold text-ink tracking-tight">Nivara Finance</div>
-        <div className="text-[10px] text-faint font-medium -mt-0.5">Personal Financial OS <button onClick={onVersion} className="ml-1 text-brand font-bold hover:underline focus:outline-none" title="Open version control">V{version}</button></div>
+        <div className="font-sans font-extrabold text-[13px] text-ink tracking-[-.045em]">NIVARA <span className="text-cyan-500">FINANCE</span></div>
+        <div className="text-[8px] text-faint font-semibold tracking-[.04em] -mt-0.5">PERSONAL FINANCIAL OS <button onClick={onVersion} className="ml-1 text-brand font-bold hover:underline focus:outline-none" title="Open version control">V{version}</button></div>
       </div>
     </div>
   );
@@ -77,7 +77,7 @@ function Brand({ version, onVersion }) {
 function NavItems({ onNavigate, collapsed = false }) {
   const [openGroups, setOpenGroups] = useState(() => Object.fromEntries(NAV.map((g) => [g.group, true])));
   return (
-    <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+    <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
       {NAV.map((g) => (
         <div key={g.group}>
           {!collapsed && <button onClick={() => setOpenGroups((current) => ({ ...current, [g.group]: !current[g.group] }))} className="w-full overline text-faint px-3 mb-1.5 flex items-center justify-between hover:text-ink" aria-expanded={!!openGroups[g.group]}><span>{g.group}</span><ChevronDown size={13} className={cx("transition-transform", !openGroups[g.group] && "-rotate-90")}/></button>}
@@ -85,8 +85,8 @@ function NavItems({ onNavigate, collapsed = false }) {
             {g.items.map((it) => (
               <NavLink key={it.path} to={it.path} end={it.path === "/"} onClick={onNavigate} data-testid={it.tid}
                 className={({ isActive }) => cx(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-[background-color,color,transform,box-shadow]",
-                  isActive ? "bg-gradient-to-r from-teal-50 to-emerald-50 text-brand-dark shadow-xs" : "text-subink hover:bg-muted hover:text-ink hover:translate-x-0.5"
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-bold transition-[background-color,color,transform,box-shadow]",
+                  isActive ? "bg-gradient-to-r from-[#f3efff] to-[#f8fbff] text-brand-dark shadow-xs border-l-2 border-brand" : "text-subink hover:bg-muted hover:text-ink hover:translate-x-0.5"
                 )} title={collapsed ? it.name : undefined}>
                 <it.icon size={17} className="shrink-0" />
                 {!collapsed && <span className="truncate">{it.name}</span>}
@@ -99,11 +99,11 @@ function NavItems({ onNavigate, collapsed = false }) {
   );
 }
 
-function LiveIdentity({ version, onVersion }) {
+function HeaderClock() {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
-  return <div className="hidden lg:flex items-center gap-3"><Brand version={version} onVersion={onVersion}/><span className="h-8 w-px bg-line"/><div className="text-xs leading-tight whitespace-nowrap"><div className="font-semibold text-ink">{now.toLocaleDateString(undefined, { weekday:"short", day:"2-digit", month:"short", year:"numeric" })}</div><div className="text-faint flex items-center gap-1 mt-0.5"><Clock3 size={12}/>{now.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit", hour12:true })} · {zone}</div></div></div>;
+  return <div className="hidden xl:block text-right leading-tight whitespace-nowrap mr-1"><div className="text-[10px] font-extrabold text-ink">{now.toLocaleDateString(undefined, { weekday:"short", day:"2-digit", month:"short", year:"numeric" })}</div><div className="text-[9px] text-faint mt-0.5">{now.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit", hour12:true })} · {zone}</div></div>;
 }
 
 function GlobalSearch() {
@@ -114,7 +114,7 @@ function GlobalSearch() {
   useEffect(() => { if (query.trim().length < 2) { setItems([]); return undefined; } const timer = window.setTimeout(() => api.get(`/search?q=${encodeURIComponent(query)}`).then((response) => { setItems(response.data.items || []); setOpen(true); }).catch(() => {}), 250); return () => window.clearTimeout(timer); }, [query]);
   const choose = (item) => { if (!item) return; nav(item.path); setOpen(false); setQuery(""); };
   const keyDown = (event) => { if (event.key === "ArrowDown") { event.preventDefault(); setActive((value) => Math.min(value + 1, items.length - 1)); } if (event.key === "ArrowUp") { event.preventDefault(); setActive((value) => Math.max(value - 1, 0)); } if (event.key === "Enter") choose(items[active]); if (event.key === "Escape") setOpen(false); };
-  return <div className="relative hidden xl:block w-[min(31vw,30rem)]"><label className="sr-only" htmlFor="financial-search">Search financial records</label><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"/><input ref={inputRef} id="financial-search" value={query} onKeyDown={keyDown} onChange={(event) => { setQuery(event.target.value); setActive(0); }} onFocus={() => setOpen(items.length > 0)} placeholder="Search your financial life…" className="w-full h-9 rounded-lg border border-line bg-white pl-9 pr-14 text-sm outline-none focus:ring-2 focus:ring-teal-200"/><kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-faint border border-line rounded px-1.5 py-0.5">⌘K</kbd>{open && items.length > 0 && <div className="absolute top-11 left-0 right-0 z-50 rounded-xl border border-line bg-white shadow-pop p-2 max-h-80 overflow-y-auto">{items.map((item, index) => <button key={`${item.group}-${item.id}`} onMouseEnter={() => setActive(index)} onClick={() => choose(item)} className={cx("w-full text-left px-3 py-2 rounded-lg", active === index ? "bg-teal-50" : "hover:bg-muted")}><span className="overline text-faint">{item.group}</span><span className="block text-sm font-semibold text-ink">{item.label}</span>{item.detail && <span className="block text-xs text-subink">{item.detail}</span>}</button>)}</div>}</div>;
+  return <div className="relative hidden min-[981px]:block w-[min(29vw,25rem)]"><label className="sr-only" htmlFor="financial-search">Search financial records</label><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-faint"/><input ref={inputRef} id="financial-search" value={query} onKeyDown={keyDown} onChange={(event) => { setQuery(event.target.value); setActive(0); }} onFocus={() => setOpen(items.length > 0)} placeholder="Search your financial life…" className="w-full h-8 rounded-full border border-line bg-white/80 pl-8 pr-12 text-[10px] outline-none focus:ring-2 focus:ring-brand/25"/><kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-faint border border-line rounded px-1.5 py-0.5">⌘K</kbd>{open && items.length > 0 && <div className="absolute top-10 left-0 right-0 z-50 rounded-xl border border-line bg-white shadow-pop p-2 max-h-80 overflow-y-auto">{items.map((item, index) => <button key={`${item.group}-${item.id}`} onMouseEnter={() => setActive(index)} onClick={() => choose(item)} className={cx("w-full text-left px-3 py-2 rounded-lg", active === index ? "bg-brand-light" : "hover:bg-muted")}><span className="overline text-faint">{item.group}</span><span className="block text-sm font-semibold text-ink">{item.label}</span>{item.detail && <span className="block text-xs text-subink">{item.detail}</span>}</button>)}</div>}</div>;
 }
 
 function Notifications() {
@@ -181,8 +181,8 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-bg flex">
       {/* Desktop sidebar */}
-      <aside className={cx("bg-white/80 backdrop-blur-xl border-r border-slate-200/70 hidden lg:flex flex-col h-screen sticky top-0 z-30 transition-[width] duration-200", sidebarCollapsed ? "w-20" : "w-72")}>
-        <div className={cx("h-20 px-5 flex items-center", sidebarCollapsed ? "justify-center" : "justify-between")}><div className={sidebarCollapsed ? "hidden" : ""}><Brand version={version} onVersion={() => nav("/versions")} /></div>{sidebarCollapsed && <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white flex items-center justify-center font-display font-extrabold text-lg">N</div>}<button onClick={() => setSidebarCollapsed((value) => !value)} className={cx("w-10 h-10 rounded-lg text-subink hover:bg-muted flex items-center justify-center", sidebarCollapsed && "absolute -right-5 bg-white border border-line shadow-sm")} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronRight size={18} className={cx("transition-transform", !sidebarCollapsed && "rotate-180")}/></button></div>
+      <aside className={cx("bg-white/85 backdrop-blur-xl border-r border-slate-200/70 hidden min-[981px]:flex flex-col h-screen sticky top-0 z-30 transition-[width] duration-200", sidebarCollapsed ? "w-20" : "w-[15.5rem]")}>
+        <div className={cx("h-16 px-5 flex items-center", sidebarCollapsed ? "justify-center" : "justify-between")}><div className={sidebarCollapsed ? "hidden" : ""}><Brand version={version} onVersion={() => nav("/versions")} /></div>{sidebarCollapsed && <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a5cff] to-[#14c9e8] text-white flex items-center justify-center"><Sparkles size={16}/></div>}<button onClick={() => setSidebarCollapsed((value) => !value)} className={cx("w-8 h-8 rounded-lg text-subink hover:bg-muted flex items-center justify-center", sidebarCollapsed && "absolute -right-4 bg-white border border-line shadow-sm")} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronRight size={16} className={cx("transition-transform", !sidebarCollapsed && "rotate-180")}/></button></div>
         <NavItems collapsed={sidebarCollapsed} />
         <div className="p-3 border-t border-line">
           <button onClick={logout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-subink hover:bg-muted hover:text-expense transition-colors">
@@ -193,7 +193,7 @@ export default function Layout({ children }) {
 
       {/* Mobile drawer */}
       {drawer && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 min-[981px]:hidden">
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={() => setDrawer(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-72 bg-surface flex flex-col animate-fade-in">
             <div className="h-16 px-5 flex items-center justify-between border-b border-line">
@@ -209,23 +209,23 @@ export default function Layout({ children }) {
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-20 px-4 sm:px-7 bg-white/75 backdrop-blur-xl sticky top-0 z-20 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setDrawer(true)} className="lg:hidden p-2 -ml-2 text-subink" data-testid="menu-btn"><Menu size={22} /></button>
-            <div className="lg:hidden"><Brand version={version} onVersion={() => nav("/versions")} /></div>
-            <LiveIdentity version={version} onVersion={() => nav("/versions")} />
+        <header className="h-16 px-4 sm:px-5 bg-white/75 backdrop-blur-xl border-b border-line/70 sticky top-0 z-20 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-[981px]:hidden">
+            <button onClick={() => setDrawer(true)} className="min-[981px]:hidden p-2 -ml-2 text-subink" data-testid="menu-btn"><Menu size={22} /></button>
+            <div className="min-[981px]:hidden"><span className="font-display font-semibold text-lg text-ink">Overview</span></div>
           </div>
           <GlobalSearch />
           <div className="flex items-center gap-2 sm:gap-3">
+            <HeaderClock />
             <Notifications />
             <button onClick={() => setQuickAdd(true)} data-testid="header-quick-add"
-              className="inline-flex items-center gap-2 h-9 px-3 sm:px-4 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-hover transition-colors shadow-xs">
-              <Plus size={16} /><span className="hidden sm:inline">Record</span>
+              className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-4 rounded-full bg-gradient-to-r from-[#8459f6] to-[#ed5d87] text-white text-[10px] font-extrabold hover:brightness-105 transition shadow-[0_7px_15px_rgba(141,77,237,.22)]">
+              <Plus size={14} /><span className="hidden sm:inline">Record</span>
             </button>
             <div className="relative flex items-center gap-2 pl-1">
-              <button onClick={() => setAdminOpen((v) => !v)} className="hidden sm:inline-flex items-center gap-1 h-9 px-3 rounded-lg border border-line bg-white text-sm font-semibold text-ink hover:bg-muted">Admin <ChevronDown size={14}/>{errorCount > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-expense text-white text-[10px] flex items-center justify-center">{errorCount > 99 ? "99+" : errorCount}</span>}</button>
+              <button onClick={() => setAdminOpen((v) => !v)} className="hidden sm:inline-flex items-center gap-1 h-8 px-2 rounded-full border border-line bg-white text-[10px] font-bold text-ink hover:bg-muted">Admin <ChevronDown size={13}/>{errorCount > 0 && <span className="min-w-4 h-4 px-1 rounded-full bg-expense text-white text-[10px] flex items-center justify-center">{errorCount > 99 ? "99+" : errorCount}</span>}</button>
               {adminOpen && <div className="absolute right-0 top-11 w-56 p-2 rounded-xl border border-line bg-white shadow-pop z-40"><button onClick={() => { setAdminOpen(false); nav("/notifications"); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted">Notification center</button><button onClick={() => { setAdminOpen(false); nav("/versions"); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted">Version control</button><button onClick={() => { setAdminOpen(false); nav("/error-log"); }} className="w-full flex justify-between text-left px-3 py-2 rounded-lg text-sm hover:bg-muted">Operational logs {errorCount > 0 && <span className="text-expense font-bold">{errorCount}</span>}</button><button onClick={() => { setAdminOpen(false); nav("/access-control"); }} className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted">Access control</button></div>}
-              <div className="w-9 h-9 rounded-full bg-ink text-white flex items-center justify-center text-sm font-semibold" data-testid="user-avatar">{initials}</div>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-800 to-slate-500 ring-2 ring-white shadow-xs text-white flex items-center justify-center text-xs font-bold" data-testid="user-avatar">{initials}</div>
               <div className="hidden md:block leading-tight">
                 <div className="text-sm font-semibold text-ink">{user?.name || "Admin"}</div>
                 <div className="text-[11px] text-faint">{user?.role?.replace("_", " ").toLowerCase()}</div>
@@ -234,13 +234,13 @@ export default function Layout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1540px] w-full mx-auto pb-28 lg:pb-10" key={loc.pathname}>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1540px] w-full mx-auto pb-28 min-[981px]:pb-10" key={loc.pathname}>
           <div className="animate-fade-up">{children}</div>
         </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface/95 backdrop-blur-lg border-t border-line z-30 flex items-center justify-around px-2">
+      <div className="mobile-safe-bottom min-[981px]:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-lg border-t border-line z-30 flex items-center justify-around px-2">
         {MOBILE.map((m) => (
           <NavLink key={m.path} to={m.path} end={m.path === "/"} data-testid={m.tid}
             className={({ isActive }) => cx("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[10px] font-semibold",
@@ -250,7 +250,7 @@ export default function Layout({ children }) {
         ))}
       </div>
       <button onClick={() => setQuickAdd(true)} data-testid="mobile-fab"
-        className="lg:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-brand text-white shadow-pop flex items-center justify-center active:scale-95 transition-transform">
+        className="mobile-safe-fab min-[981px]:hidden fixed right-4 z-30 w-14 h-14 rounded-full bg-brand text-white shadow-pop flex items-center justify-center active:scale-95 transition-transform">
         <Plus size={26} />
       </button>
 

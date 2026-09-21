@@ -1,131 +1,43 @@
 import React from "react";
-import {
-  ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar,
-  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-} from "recharts";
+import { ArcElement, BarElement, CategoryScale, Chart as ChartJS, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip } from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { inr, fmtMonth } from "../lib/format";
 import { Card } from "./ui";
 
-export const PALETTE = ["#0D9488", "#2563EB", "#F59E0B", "#8B5CF6", "#EC4899", "#F97316", "#10B981", "#64748B"];
-const AXIS = { fontSize: 11, fill: "#94A3B8", fontFamily: "JetBrains Mono" };
+ChartJS.register(ArcElement, BarElement, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip);
+export const PALETTE = ["#05A66C", "#4B5BE5", "#FFD34D", "#73819A", "#A980E9", "#FF9472", "#31B9E9", "#12B981"];
 
-function TT({ active, payload, label, labelFmt }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="bg-surface border border-line rounded-lg shadow-pop px-3 py-2 text-xs">
-      <p className="font-semibold text-ink mb-1">{labelFmt ? labelFmt(label) : label}</p>
-      {payload.map((p, i) => (
-        <div key={i} className="flex items-center gap-2 num">
-          <span className="w-2 h-2 rounded-full" style={{ background: p.color || p.fill }} />
-          <span className="text-subink">{p.name}:</span>
-          <span className="font-semibold text-ink">{inr(p.value)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+const grid = { color: "rgba(178, 191, 220, .38)", drawBorder: false };
+const axis = { color: "#8591AA", font: { family: "Manrope", size: 10, weight: "600" }, padding: 8 };
+const tooltip = { backgroundColor: "rgba(24, 34, 58, .94)", titleColor: "#fff", bodyColor: "#dfe6ff", padding: 11, cornerRadius: 10, displayColors: true, boxPadding: 4, titleFont: { family: "Manrope", weight: "700" }, bodyFont: { family: "Manrope" }, callbacks: { label: (item) => `${item.dataset.label || item.label}: ${inr(item.raw)}` } };
+function gradient(context, from, to) { const { chart, chartArea } = context; if (!chartArea) return from; const fill = chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom); fill.addColorStop(0, from); fill.addColorStop(1, to); return fill; }
+function amountAxis() { return { ticks: { ...axis, callback: (v) => inr(v, { compact: true }), maxTicksLimit: 5 }, grid, border: { display: false } }; }
 
 export function ChartCard({ title, subtitle, children, right, className, height = 260, testid }) {
-  return (
-    <Card className={"p-5 " + (className || "")} data-testid={testid}>
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h3 className="font-display font-semibold text-ink">{title}</h3>
-          {subtitle && <p className="text-xs text-subink mt-0.5">{subtitle}</p>}
-        </div>
-        {right}
-      </div>
-      <div style={{ width: "100%", height }}>{children}</div>
-    </Card>
-  );
+  return <Card className={`p-5 sm:p-6 ${className || ""}`} data-testid={testid}><div className="flex items-start justify-between gap-4 mb-4"><div><h3 className="font-display font-semibold text-lg text-ink">{title}</h3>{subtitle && <p className="text-xs text-subink mt-0.5">{subtitle}</p>}</div>{right}</div><div style={{ width: "100%", height }}>{children}</div></Card>;
 }
 
 export function CashFlowArea({ data, xKey = "month", monthLabels = true }) {
-  const fmt = monthLabels ? fmtMonth : (x) => x;
-  return (
-    <ResponsiveContainer>
-      <AreaChart data={data} margin={{ left: -18, right: 8, top: 4 }}>
-        <defs>
-          <linearGradient id="gIn" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10B981" stopOpacity={0.35} /><stop offset="100%" stopColor="#10B981" stopOpacity={0} /></linearGradient>
-          <linearGradient id="gOut" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#F43F5E" stopOpacity={0.3} /><stop offset="100%" stopColor="#F43F5E" stopOpacity={0} /></linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F5" vertical={false} />
-        <XAxis dataKey={xKey} tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmt} />
-        <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={(v) => inr(v, { compact: true })} width={64} />
-        <Tooltip content={<TT labelFmt={fmt} />} />
-        <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-        <Area type="monotone" dataKey="in" name="Money In" stroke="#10B981" strokeWidth={2} fill="url(#gIn)" />
-        <Area type="monotone" dataKey="out" name="Money Out" stroke="#F43F5E" strokeWidth={2} fill="url(#gOut)" />
-      </AreaChart>
-    </ResponsiveContainer>
-  );
+  const labels = data.map((d) => monthLabels ? fmtMonth(d[xKey]) : d[xKey]);
+  return <Line data={{ labels, datasets: [{ label: "Money in", data: data.map((d) => d.in), borderColor: "#05A66C", backgroundColor: (c) => gradient(c, "rgba(5,166,108,.28)", "rgba(5,166,108,0)"), fill: true, tension: .42, pointRadius: 0, pointHoverRadius: 5, borderWidth: 2.5 }, { label: "Money out", data: data.map((d) => d.out), borderColor: "#F08072", backgroundColor: (c) => gradient(c, "rgba(240,128,114,.20)", "rgba(240,128,114,0)"), fill: true, tension: .42, pointRadius: 0, pointHoverRadius: 5, borderWidth: 2.5 }] }} options={{ responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: "index" }, plugins: { legend: { position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, font: { family: "Manrope", size: 11 } } }, tooltip }, scales: { x: { ticks: axis, grid: { display: false }, border: { display: false } }, y: amountAxis() } }} />;
 }
 
-export function TrendLine({ data, xKey = "month", yKey = "value", name = "Value", color = "#0D9488", monthLabels = true }) {
-  const fmt = monthLabels ? fmtMonth : (x) => x;
-  return (
-    <ResponsiveContainer>
-      <LineChart data={data} margin={{ left: -18, right: 8, top: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F5" vertical={false} />
-        <XAxis dataKey={xKey} tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmt} />
-        <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={(v) => inr(v, { compact: true })} width={64} />
-        <Tooltip content={<TT labelFmt={fmt} />} />
-        <Line type="monotone" dataKey={yKey} name={name} stroke={color} strokeWidth={2.5} dot={{ r: 3, fill: color }} activeDot={{ r: 5 }} />
-      </LineChart>
-    </ResponsiveContainer>
-  );
+export function TrendLine({ data, xKey = "month", yKey = "value", name = "Value", color = "#4B5BE5", monthLabels = true }) {
+  const labels = data.map((d) => monthLabels ? fmtMonth(d[xKey]) : d[xKey]);
+  return <Line data={{ labels, datasets: [{ label: name, data: data.map((d) => d[yKey]), borderColor: color, backgroundColor: (c) => gradient(c, "rgba(75,91,229,.30)", "rgba(75,91,229,.015)"), fill: true, tension: .42, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#fff", pointHoverBorderWidth: 3, borderWidth: 3 }] }} options={{ responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: "index" }, plugins: { legend: { display: false }, tooltip }, scales: { x: { ticks: { ...axis, maxTicksLimit: 5 }, grid: { display: false }, border: { display: false } }, y: { ...amountAxis(), display: false } } }} />;
 }
 
-export function Bars({ data, xKey = "name", series = [{ key: "value", name: "Value", color: "#0D9488" }], monthLabels = false, stacked = false }) {
-  const fmt = monthLabels ? fmtMonth : (x) => (typeof x === "string" && x.length > 12 ? x.slice(0, 12) + "…" : x);
-  return (
-    <ResponsiveContainer>
-      <BarChart data={data} margin={{ left: -18, right: 8, top: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#EEF1F5" vertical={false} />
-        <XAxis dataKey={xKey} tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmt} interval={0} angle={data.length > 6 ? -18 : 0} textAnchor={data.length > 6 ? "end" : "middle"} height={data.length > 6 ? 44 : 24} />
-        <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={(v) => inr(v, { compact: true })} width={64} />
-        <Tooltip content={<TT labelFmt={monthLabels ? fmtMonth : undefined} />} cursor={{ fill: "#F1F5F9" }} />
-        {series.length > 1 && <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />}
-        {series.map((s) => (
-          <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} stackId={stacked ? "a" : undefined} maxBarSize={46} />
-        ))}
-      </BarChart>
-    </ResponsiveContainer>
-  );
+export function Bars({ data, xKey = "name", series = [{ key: "value", name: "Value", color: "#4B5BE5" }], monthLabels = false, stacked = false }) {
+  const labels = data.map((d) => monthLabels ? fmtMonth(d[xKey]) : d[xKey]);
+  return <Bar data={{ labels, datasets: series.map((s) => ({ label: s.name, data: data.map((d) => d[s.key]), backgroundColor: s.color, borderRadius: 5, borderSkipped: false, maxBarThickness: 22, barPercentage: .72, categoryPercentage: .72 })) }} options={{ responsive: true, maintainAspectRatio: false, interaction: { intersect: false, mode: "index" }, plugins: { legend: series.length > 1 ? { position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 7, font: { family: "Manrope", size: 11 } } } : { display: false }, tooltip }, scales: { x: { stacked, ticks: { ...axis, maxTicksLimit: 6 }, grid: { display: false }, border: { display: false } }, y: { ...amountAxis(), stacked } } }} />;
 }
 
 export function Donut({ data, centerLabel, centerValue }) {
-  const total = data.reduce((s, d) => s + (d.value || 0), 0);
-  return (
-    <div className="relative w-full h-full">
-      <ResponsiveContainer>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="92%" paddingAngle={2} stroke="none">
-            {data.map((d, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
-          </Pie>
-          <Tooltip content={<TT />} />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <span className="overline text-faint">{centerLabel}</span>
-        <span className="num font-bold text-lg text-ink">{centerValue != null ? centerValue : inr(total, { compact: true })}</span>
-      </div>
-    </div>
-  );
+  const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
+  return <div className="relative h-full w-full"><Doughnut data={{ labels: data.map((d) => d.name), datasets: [{ data: data.map((d) => d.value), backgroundColor: data.map((_, i) => PALETTE[i % PALETTE.length]), borderColor: "#fff", borderWidth: 3, spacing: 1, hoverOffset: 5 }] }} options={{ responsive: true, maintainAspectRatio: false, cutout: "65%", plugins: { legend: { display: false }, tooltip } }} /><div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"><span className="overline text-faint text-[9px]">{centerLabel}</span><span className="num font-bold text-lg text-ink">{centerValue != null ? centerValue : inr(total, { compact: true })}</span></div></div>;
 }
 
 export function Legendish({ data }) {
-  return (
-    <div className="flex flex-col gap-2 mt-2">
-      {data.map((d, i) => (
-        <div key={i} className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-2 text-subink">
-            <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PALETTE[i % PALETTE.length] }} />
-            {d.name}
-          </span>
-          <span className="num font-semibold text-ink">{inr(d.value, { compact: true })}</span>
-        </div>
-      ))}
-    </div>
-  );
+  const total = data.reduce((sum, item) => sum + (item.value || 0), 0);
+  return <div className="flex flex-col gap-3">{data.map((d, i) => <div key={d.name || i}><div className="flex items-center justify-between gap-3 text-xs"><span className="flex items-center gap-2 text-subink font-semibold"><span className="w-2 h-2 rounded-full" style={{ background: PALETTE[i % PALETTE.length] }} />{d.name}</span><span className="num font-bold text-ink">{inr(d.value, { compact: true })}</span></div><div className="h-1.5 rounded-full bg-[#e8eef8] mt-2 overflow-hidden"><div className="h-full rounded-full" style={{ width: `${total ? Math.max(4, d.value / total * 100) : 0}%`, background: PALETTE[i % PALETTE.length] }} /></div></div>)}</div>;
 }

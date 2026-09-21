@@ -4,18 +4,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: "#F6F7F9",
+        bg: "#F4F7FF",
         surface: "#FFFFFF",
-        muted: "#F1F5F9",
-        line: "#E7EAEE",
-        ink: "#0F172A",
-        subink: "#51607A",
-        faint: "#94A3B8",
+        muted: "#EEF3FF",
+        line: "#DFE6F5",
+        ink: "#18223A",
+        subink: "#64708A",
+        faint: "#94A0B8",
         brand: {
-          DEFAULT: "#0F766E",
-          hover: "#115E59",
-          light: "#CCFBF1",
-          dark: "#042F2E",
+          DEFAULT: "#4B5BE5",
+          hover: "#3948C7",
+          light: "#E8EBFF",
+          dark: "#303FAF",
         },
         amber: { DEFAULT: "#D97706", light: "#FEF3C7" },
         income: "#059669",
@@ -23,14 +23,14 @@ module.exports = {
         info: "#0284C7",
       },
       fontFamily: {
-        sans: ["IBM Plex Sans", "-apple-system", "system-ui", "sans-serif"],
-        display: ["Outfit", "IBM Plex Sans", "system-ui", "sans-serif"],
+        sans: ["Manrope", "-apple-system", "system-ui", "sans-serif"],
+        display: ["Fraunces", "Georgia", "serif"],
         mono: ["JetBrains Mono", "SFMono-Regular", "Menlo", "monospace"],
       },
       boxShadow: {
-        xs: "0 1px 2px 0 rgba(15,23,42,0.05)",
-        card: "0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04)",
-        pop: "0 10px 30px -10px rgba(15,23,42,0.25)",
+        xs: "0 2px 5px rgba(55,74,130,0.08)",
+        card: "0 1px 1px rgba(28,43,83,0.04), 0 12px 28px rgba(61,81,148,0.07)",
+        pop: "0 18px 45px -16px rgba(52,70,139,0.26)",
       },
       borderRadius: { xl: "0.9rem", "2xl": "1.1rem" },
       keyframes: {

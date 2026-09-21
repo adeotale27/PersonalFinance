@@ -6,7 +6,7 @@ export function cx(...a) { return a.filter(Boolean).join(" "); }
 
 export function Card({ className, children, ...p }) {
   return (
-    <div className={cx("bg-surface rounded-xl border border-slate-200/90 shadow-[0_8px_24px_rgba(15,23,42,0.035)]", className)} {...p}>
+    <div className={cx("premium-card bg-surface rounded-2xl border border-line/90 shadow-card", className)} {...p}>
       {children}
     </div>
   );
