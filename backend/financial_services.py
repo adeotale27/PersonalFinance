@@ -44,6 +44,43 @@ async def ensure_indexes() -> None:
     await raw_db.import_rows.create_index([("workspace_id", 1), ("fingerprint", 1)])
     await workspace_unique(raw_db.valuation_snapshots, "as_of_1", [("as_of", 1)], "workspace_as_of")
     await raw_db.reconciliation_cases.create_index([("workspace_id", 1), ("status", 1), ("created_at", -1)])
+    await _ensure_recurring_payment_identity(
+        "farm_rent_payments",
+        ("farm_id", "period"),
+        "workspace_farm_rent_period",
+    )
+    await _ensure_recurring_payment_identity(
+        "rent_payments",
+        ("property_id", "unit_key", "period"),
+        "workspace_property_unit_rent_period",
+    )
+
+
+async def _ensure_recurring_payment_identity(
+    collection_name: str,
+    fields: tuple[str, ...],
+    index_name: str,
+) -> None:
+    collection = raw_db[collection_name]
+    match = {"recurring_generated": True}
+    match.update({field: {"$type": "string"} for field in fields})
+    identity = {"workspace_id": "$workspace_id"}
+    identity.update({field: f"${field}" for field in fields})
+    duplicate_groups = await collection.aggregate([
+        {"$match": match},
+        {"$sort": {"amount_received": -1, "created_at": 1}},
+        {"$group": {"_id": identity, "ids": {"$push": "$_id"}}},
+        {"$match": {"ids.1": {"$exists": True}}},
+    ]).to_list(None)
+    for group in duplicate_groups:
+        await collection.delete_many({"_id": {"$in": group["ids"][1:]}})
+    index_fields = [("workspace_id", 1)] + [(field, 1) for field in fields]
+    await collection.create_index(
+        index_fields,
+        unique=True,
+        name=index_name,
+        partialFilterExpression=match,
+    )
 
 
 async def entity_for_investment(name: str, owner: str, asset_class: str, source_import_id: str | None = None, session=None) -> dict:

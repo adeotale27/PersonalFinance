@@ -25,6 +25,7 @@ frontend/dist/
 .env
 .env.*
 !.env.example
+!backend/.env.e2e.example
 
 # Logs
 *.log

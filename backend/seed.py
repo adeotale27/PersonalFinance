@@ -135,7 +135,9 @@ async def seed_demo():
         {"project_id": proj_id, "name": "FlowTech Plumbing", "party_type": "Plumber", "scope": "Plumbing", "contact": "flowtech@mail.com", "contract_value": 480000},
         {"project_id": proj_id, "name": "Voltas Electricals", "party_type": "Electrician", "scope": "Electrical", "contact": "voltas@mail.com", "contract_value": 520000},
     ]
-    await db.parties.insert_many([{**p, "created_at": now_utc()} for p in parties])
+    party_result = await db.parties.insert_many([{**p, "created_at": now_utc()} for p in parties])
+    party_ids = [str(party_id) for party_id in party_result.inserted_ids]
+    party_ids_by_name = {party["name"]: party_ids[index] for index, party in enumerate(parties)}
     proj_txns = []
     for m in range(5):
         mk = month_ago(m)
@@ -144,20 +146,70 @@ async def seed_demo():
         proj_txns.append({"type": "EXPENSE", "date": f"{mk}-14", "amount": 85000, "account_id": project_acc, "category": "Materials", "party": "BuildRight Civil", "scope": "PROJECT", "project_id": proj_id, "description": "Cement & steel"})
         if m % 2 == 0:
             proj_txns.append({"type": "EXPENSE", "date": f"{mk}-20", "amount": 120000, "account_id": project_acc, "category": "Electrical", "party": "Voltas Electricals", "scope": "PROJECT", "project_id": proj_id, "description": "Wiring"})
+        if m == 0:
+            proj_txns.append({"type": "EXPENSE", "date": f"{mk}-24", "amount": 200000, "account_id": project_acc, "category": "Professional Fees", "party": "Arjun Design Studio", "scope": "PROJECT", "project_id": proj_id, "description": "Architect design milestone"})
     proj_txns = [t for t in proj_txns if t["amount"] > 0]
     for t in proj_txns:
+        if t.get("party") in party_ids_by_name:
+            t["party_id"] = party_ids_by_name[t["party"]]
+            t["payment_mode"] = "Bank Transfer"
+            t["payment_status"] = "RECORDED"
         t["created_at"] = now_utc(); t["created_by"] = "seed"
     await db.transactions.insert_many(proj_txns)
 
     # ---- party users with granular access ----
     await db.users.insert_many([
         {"email": "architect@nivara.app", "name": "Arjun (Architect)", "role": "PARTY_USER", "party_type": "Architect",
+         "party_id": party_ids[0], "project_id": proj_id,
          "password_hash": hash_password("Architect@2026"), "active": True,
          "permissions": [{"project_id": proj_id, "project_name": "Skyline Heights Residence", "modules": {"work": "edit", "documents": "edit", "payments": "view", "overview": "view"}}], "created_at": now_utc()},
         {"email": "contractor.a@nivara.app", "name": "BuildRight (Contractor A)", "role": "PARTY_USER", "party_type": "Civil Contractor",
+         "party_id": party_ids[1], "project_id": proj_id,
          "password_hash": hash_password("Contractor@2026"), "active": True,
          "permissions": [{"project_id": proj_id, "project_name": "Skyline Heights Residence", "modules": {"work": "edit", "documents": "edit", "requests": "edit", "payments": "view"}}], "created_at": now_utc()},
     ])
+
+
+async def ensure_demo_party_links():
+    """Repair party references for demo users created before portal linking existed."""
+    for email, party_name in (
+        ("architect@nivara.app", "Arjun Design Studio"),
+        ("contractor.a@nivara.app", "BuildRight Civil"),
+    ):
+        user = await db.users.find_one({
+            "email": email,
+            "role": "PARTY_USER",
+        })
+        if not user:
+            continue
+        project_id = next(
+            (grant.get("project_id") for grant in user.get("permissions", [])
+             if grant.get("project_name") == "Skyline Heights Residence"),
+            None,
+        )
+        project_id = user.get("project_id") or project_id
+        if not project_id:
+            continue
+        party = await db.parties.find_one({
+            "project_id": project_id,
+            "name": party_name,
+            "deleted_at": {"$exists": False},
+        })
+        if party:
+            party_id = str(party["_id"])
+            if user.get("party_id") != party_id:
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$set": {"party_id": party_id, "project_id": project_id}},
+                )
+            await db.transactions.update_many(
+                {
+                    "project_id": project_id,
+                    "party": party_name,
+                    "party_id": {"$exists": False},
+                },
+                {"$set": {"party_id": party_id, "payment_mode": "Bank Transfer", "payment_status": "RECORDED"}},
+            )
 
 
 async def seed_v2():

@@ -10,3 +10,4 @@ requests==2.34.2
 uvicorn==0.25.0
 pytest==8.3.3
 pymongo==4.9.2
+httpx==0.28.1

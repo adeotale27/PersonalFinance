@@ -1,9 +1,11 @@
 """Farms & farming ledger (per-farm income/expense and annual leases)."""
 from collections import defaultdict
 from datetime import date
+from calendar import monthrange
 from fastapi import APIRouter, Depends
 from core import db, serialize, oid, now_utc, require_admin, round2
 from crud import make_crud_router
+from pymongo.errors import DuplicateKeyError
 
 router = APIRouter(tags=["farms"])
 crud, coll = make_crud_router("farms", "farms")
@@ -32,20 +34,29 @@ async def ensure_annual_farm_rent_payments():
             start = today
         for year in range(start.year, today.year + 1):
             period = str(year)
-            exists = await db.farm_rent_payments.find_one({"farm_id": str(farm["_id"]), "period": period, "deleted_at": {"$exists": False}})
+            exists = await db.farm_rent_payments.find_one({"farm_id": str(farm["_id"]), "period": period})
             if exists:
                 continue
             due_raw = farm.get("annual_rent_due_date") or f"{year}-{start.month:02d}-{start.day:02d}"
             try:
                 template = date.fromisoformat(due_raw[:10])
-                due = date(year, template.month, min(template.day, 28))
+                due = date(year, template.month, min(template.day, monthrange(year, template.month)[1]))
             except ValueError:
-                due = date(year, start.month, min(start.day, 28))
-            await db.farm_rent_payments.insert_one({
+                due = date(year, start.month, min(start.day, monthrange(year, start.month)[1]))
+            payment = {
                 "farm_id": str(farm["_id"]), "farm_name": farm.get("name", ""), "tenant": farm.get("tenant", ""),
                 "period": period, "due_date": due.isoformat(), "amount_due": _annual_rent(farm, year),
                 "amount_received": 0, "status": "PENDING", "recurring_generated": True, "created_at": now_utc(),
-            })
+            }
+            try:
+                await db.farm_rent_payments.insert_one(payment)
+            except DuplicateKeyError:
+                if not await db.farm_rent_payments.find_one({
+                    "farm_id": str(farm["_id"]),
+                    "period": period,
+                    "recurring_generated": True,
+                }):
+                    raise
 
 
 @router.get("/farms/rent-payments")

@@ -4,6 +4,7 @@ from datetime import date
 from calendar import monthrange
 from fastapi import APIRouter, Depends
 from core import db, serialize, oid, now_utc, require_admin, round2, normalize_date
+from pymongo.errors import DuplicateKeyError
 
 router = APIRouter(tags=["rental"])
 
@@ -43,24 +44,33 @@ async def ensure_recurring_rent_payments():
                 start = date.fromisoformat((unit.get("rent_start_date") or today.isoformat())[:10])
             except ValueError:
                 start = today
-            unit_key = unit.get("id") or unit.get("name") or str(index + 1)
+            unit_key = str(unit.get("id") or unit.get("name") or index + 1)
             for period in _month_cursor(start, today):
                 period_key = period.strftime("%Y-%m")
                 exists = await db.rent_payments.find_one({
                     "property_id": prop_id, "unit_key": unit_key, "period": period_key,
-                    "deleted_at": {"$exists": False},
                 })
                 if exists:
                     continue
                 due_day = min(max(int(unit.get("rent_due_day", 1) or 1), 1), monthrange(period.year, period.month)[1])
-                await db.rent_payments.insert_one({
+                payment = {
                     "property_id": prop_id, "property_name": prop.get("name", ""),
                     "unit": unit.get("name") or f"Unit {index + 1}", "unit_key": unit_key,
                     "tenant": unit.get("tenant", ""), "period": period_key,
                     "due_date": date(period.year, period.month, due_day).isoformat(),
                     "amount_due": _escalated_rent(unit, period), "amount_received": 0,
                     "status": "PENDING", "recurring_generated": True, "created_at": now_utc(),
-                })
+                }
+                try:
+                    await db.rent_payments.insert_one(payment)
+                except DuplicateKeyError:
+                    if not await db.rent_payments.find_one({
+                        "property_id": prop_id,
+                        "unit_key": unit_key,
+                        "period": period_key,
+                        "recurring_generated": True,
+                    }):
+                        raise
 
 
 @router.get("/rental/properties")

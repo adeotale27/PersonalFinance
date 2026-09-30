@@ -4,8 +4,11 @@ import { Eye, EyeOff, Handshake, LockKeyhole, Mail, ShieldCheck, Sparkles, Trend
 
 const features = [["Net worth & cash flow", "Real-time wealth and treasury reporting", TrendingUp], ["Lending & recovery", "Structured lending and repayment clarity", Handshake], ["Rental income", "Portfolio yield and occupancy tracking", Sparkles], ["Granular access", "Secure, role-aware workspace control", ShieldCheck]];
 
-function BrandMark({ dark = false }) {
-  return <div className="flex items-center gap-2.5"><span className={`login-mark ${dark ? "" : "shadow-lg shadow-indigo-950/20"}`}><Sparkles size={17} strokeWidth={2.6} /></span><div className="leading-none"><strong className={dark ? "text-white" : "text-ink"}>NIVARA</strong><strong className="text-cyan-400 ml-1">FINANCE</strong><span className={`block mt-1 text-[8px] tracking-[.08em] ${dark ? "text-slate-400" : "text-faint"}`}>PERSONAL FINANCIAL OS</span></div></div>;
+function BrandMark() {
+  return <div className="login-brand-lockup">
+    <img src="/brand/nivara-full-logo.png" alt="Nivara Finance" className="login-brand-full-logo" />
+    <span>BUILD · MANAGE · GROW</span>
+  </div>;
 }
 
 function FinanceVisual() {
@@ -23,8 +26,8 @@ export default function Login() {
 
   return <div className="login-shell min-h-screen text-white"><div className="login-shell__grid" />
     <div className="relative z-10 min-h-screen max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-14 py-7 sm:py-12 flex flex-col">
-      <BrandMark dark />
-      <div className="flex-1 grid lg:grid-cols-[1.28fr_.72fr] items-center gap-12 lg:gap-20 py-10 lg:py-8">
+      <BrandMark />
+      <div className="login-layout flex-1 grid lg:grid-cols-[1.28fr_.72fr] items-center gap-12 lg:gap-20 py-10 lg:py-8">
         <section className="max-w-2xl"><FinanceVisual /><div className="mt-10"><p className="text-cyan-400 text-[10px] tracking-[.11em] font-extrabold">FINANCIAL OPERATING SYSTEM</p><h1 className="mt-2 font-sans text-[2rem] sm:text-[2.65rem] font-extrabold tracking-[-.045em] leading-[1.08] max-w-xl">One command center for all your money & projects.</h1><div className="grid sm:grid-cols-2 gap-x-8 gap-y-5 mt-8">{features.map(([title, detail, Icon]) => <div key={title} className="flex gap-3"><span className="login-feature-icon"><Icon size={16} /></span><div><h2 className="text-sm font-bold">{title}</h2><p className="text-[11px] leading-snug text-slate-400 mt-0.5">{detail}</p></div></div>)}</div></div></section>
         <section className="login-panel w-full max-w-[410px] lg:justify-self-end p-6 sm:p-8"><div className="w-10 h-1 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 mb-6"/><h2 className="font-sans text-2xl font-extrabold tracking-tight">Welcome back</h2><p className="text-sm text-slate-400 mt-1">Your private finance workspace, ready when you are.</p><form onSubmit={submit} className="mt-7 space-y-5"><label className="block"><span className="login-label">Email address</span><span className="login-input-wrap"><Mail size={16}/><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="admin@nivara.app" data-testid="login-email" required /></span></label><label className="block"><span className="flex items-center justify-between login-label">Password <span className="text-cyan-400 normal-case tracking-normal cursor-pointer">Forgot?</span></span><span className="login-input-wrap"><LockKeyhole size={16}/><input type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" data-testid="login-password" required /><button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}</button></span></label>{error && <div className="text-sm text-rose-200 bg-rose-500/10 border border-rose-400/30 rounded-xl px-3 py-2" data-testid="login-error">{error}</div>}<button type="submit" disabled={loading} data-testid="login-submit" className="login-submit">{loading ? "Signing in…" : "Sign in"}</button></form><p className="text-[10px] text-slate-500 mt-5 text-center flex justify-center items-center gap-1.5"><LockKeyhole size={12}/> Your information stays protected in this workspace.</p></section>
       </div>

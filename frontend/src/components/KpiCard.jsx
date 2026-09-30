@@ -20,10 +20,18 @@ export default function KpiCard({ label, value, raw, sub, trend, tone = "ink", i
   return (
     <div
       onClick={onClick}
+      onKeyDown={clickable ? (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      } : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
       data-testid={testid}
       className={cx(
-        "group relative overflow-hidden bg-surface rounded-xl border border-line p-4 sm:p-5 shadow-xs ring-1 ring-transparent transition-all duration-200",
-        clickable && "cursor-pointer hover:-translate-y-0.5 hover:shadow-card hover:ring-line"
+        "kpi-card group relative overflow-hidden bg-surface rounded-xl border border-line p-4 sm:p-5 shadow-xs ring-1 ring-transparent transition-all duration-300",
+        clickable && "cursor-pointer hover:-translate-y-1 hover:shadow-card hover:ring-line"
       )}
     >
       <div className={cx("absolute left-0 top-4 bottom-4 w-0.5 rounded-r-full", t.bar)} />
