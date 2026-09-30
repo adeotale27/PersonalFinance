@@ -1,5 +1,4 @@
 """Lending & Borrowing."""
-from datetime import datetime
 from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException
 from core import db, serialize, oid, now_utc, require_admin, round2, normalize_date, validate_financial_payload
@@ -29,6 +28,14 @@ def _enrich(doc: dict) -> dict:
     d["outstanding"] = max(outstanding, 0)
     d["status"] = status
     return d
+
+
+def _paid_expression() -> dict:
+    return {"$sum": {"$map": {
+        "input": {"$ifNull": ["$repayments", []]},
+        "as": "repayment",
+        "in": {"$ifNull": ["$$repayment.amount", 0]},
+    }}}
 
 
 @router.get("/lending")
@@ -80,8 +87,20 @@ async def lending_summary(direction: str = "LENT", user: dict = Depends(require_
 async def create_lending(payload: dict, user: dict = Depends(require_admin)):
     payload = validate_financial_payload(payload)
     payload["amount"] = round2(payload.get("amount", 0))
-    payload.setdefault("direction", "LENT")
-    payload.setdefault("repayments", [])
+    payload["direction"] = str(payload.get("direction", "LENT")).strip().upper()
+    if payload["direction"] not in ("LENT", "BORROWED"):
+        raise HTTPException(status_code=422, detail="Direction must be LENT or BORROWED")
+    if payload["amount"] <= 0:
+        raise HTTPException(status_code=422, detail="Amount must be greater than zero")
+    payload["counterparty"] = str(payload.get("counterparty") or "").strip()
+    if not payload["counterparty"]:
+        raise HTTPException(status_code=422, detail="Counterparty is required")
+    repayments = payload.get("repayments", [])
+    if not isinstance(repayments, list):
+        raise HTTPException(status_code=422, detail="Repayments must be a list")
+    if repayments:
+        raise HTTPException(status_code=422, detail="Create the record first, then add repayments individually")
+    payload["repayments"] = []
     payload["date"] = normalize_date(payload.get("date") or now_utc().date().isoformat())
     if payload.get("due_date"):
         payload["due_date"] = normalize_date(payload["due_date"])
@@ -93,16 +112,43 @@ async def create_lending(payload: dict, user: dict = Depends(require_admin)):
 @router.put("/lending/{item_id}")
 async def update_lending(item_id: str, payload: dict, user: dict = Depends(require_admin)):
     payload = validate_financial_payload(payload)
+    if "repayments" in payload:
+        raise HTTPException(status_code=422, detail="Use the repayment endpoint to change repayment history")
+    if "direction" in payload:
+        payload["direction"] = str(payload["direction"]).strip().upper()
+        if payload["direction"] not in ("LENT", "BORROWED"):
+            raise HTTPException(status_code=422, detail="Direction must be LENT or BORROWED")
+    if "counterparty" in payload:
+        payload["counterparty"] = str(payload["counterparty"] or "").strip()
+        if not payload["counterparty"]:
+            raise HTTPException(status_code=422, detail="Counterparty is required")
     payload.pop("id", None); payload.pop("_id", None)
     payload.pop("paid", None); payload.pop("outstanding", None)
+    existing = await db.lendings.find_one({"_id": oid(item_id), "deleted_at": {"$exists": False}})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Lending record not found")
     if "amount" in payload:
         payload["amount"] = round2(payload["amount"])
+        if payload["amount"] <= 0:
+            raise HTTPException(status_code=422, detail="Amount must be greater than zero")
+        paid = round2(sum(round2(row.get("amount", 0)) for row in existing.get("repayments", []) or []))
+        if payload["amount"] + 0.009 < paid:
+            raise HTTPException(status_code=400, detail="Principal cannot be less than repayments already recorded")
     for key in ("date", "due_date"):
         if key in payload and payload[key]:
             payload[key] = normalize_date(payload[key])
     payload["updated_at"] = now_utc()
-    await db.lendings.update_one({"_id": oid(item_id)}, {"$set": payload})
-    return _enrich(await db.lendings.find_one({"_id": oid(item_id)}))
+    query = {"_id": existing["_id"], "deleted_at": {"$exists": False}}
+    if "amount" in payload:
+        query["$expr"] = {"$lte": [_paid_expression(), payload["amount"]]}
+    updated = await db.lendings.update_one(query, {"$set": payload})
+    if updated.modified_count != 1:
+        current = await db.lendings.find_one({"_id": existing["_id"], "deleted_at": {"$exists": False}})
+        if not current:
+            raise HTTPException(status_code=404, detail="Lending record not found")
+        if "amount" in payload and payload["amount"] + 0.009 < _enrich(current)["paid"]:
+            raise HTTPException(status_code=400, detail="Principal cannot be less than repayments already recorded")
+    return _enrich(await db.lendings.find_one({"_id": existing["_id"]}))
 
 
 @router.post("/lending/{item_id}/repayment")
@@ -122,11 +168,30 @@ async def add_repayment(item_id: str, payload: dict, user: dict = Depends(requir
         "amount": amount,
         "note": payload.get("note", ""),
     }
-    await db.lendings.update_one({"_id": oid(item_id)}, {"$push": {"repayments": entry}})
-    return _enrich(await db.lendings.find_one({"_id": oid(item_id)}))
+    balance_expression = {"$subtract": [{"$ifNull": ["$amount", 0]}, _paid_expression()]}
+    result = await db.lendings.update_one(
+        {
+            "_id": loan["_id"],
+            "deleted_at": {"$exists": False},
+            "$expr": {"$gte": [balance_expression, amount]},
+        },
+        {"$push": {"repayments": entry}},
+    )
+    if result.modified_count != 1:
+        current = await db.lendings.find_one({"_id": loan["_id"], "deleted_at": {"$exists": False}})
+        if not current:
+            raise HTTPException(status_code=404, detail="Lending record not found")
+        outstanding = _enrich(current)["outstanding"]
+        raise HTTPException(status_code=400, detail=f"Repayment cannot exceed outstanding balance of {outstanding:.2f}")
+    return _enrich(await db.lendings.find_one({"_id": loan["_id"]}))
 
 
 @router.delete("/lending/{item_id}")
 async def delete_lending(item_id: str, user: dict = Depends(require_admin)):
-    await db.lendings.update_one({"_id": oid(item_id)}, {"$set": {"deleted_at": now_utc()}})
+    result = await db.lendings.update_one(
+        {"_id": oid(item_id), "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now_utc()}},
+    )
+    if result.modified_count != 1:
+        raise HTTPException(status_code=404, detail="Lending record not found")
     return {"status": "deleted"}

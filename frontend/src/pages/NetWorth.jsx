@@ -56,8 +56,8 @@ export default function NetWorth() {
               <KpiCard label="Total Liabilities" raw={data.total_liabilities} tone="expense" testid="nw-liabilities" />
             </div>
             <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-6">
-              <ChartCard title="Net Worth History" subtitle="Recorded daily valuations only" height={230} className="lg:col-span-3">
-                {history.data?.items?.length > 1 ? <TrendLine data={history.data.items} xKey="date" yKey="net_worth" name="Net worth" monthLabels={false} /> : <div className="h-full flex items-center justify-center text-sm text-faint">History will appear as Nivara records daily snapshots.</div>}
+              <ChartCard title="Net Worth History" subtitle="Your saved valuation snapshots" height={230} className="lg:col-span-3">
+                {history.data?.items?.length ? <><TrendLine data={history.data.items} xKey="date" yKey="net_worth" name="Net worth" monthLabels={false} />{history.data.items.length === 1 && <div className="net-worth-single-caption">One snapshot saved · record another valuation to compare your progress.</div>}</> : <div className="chart-empty">No valuation snapshots yet. Add a dated snapshot to begin tracking net-worth changes.</div>}
               </ChartCard>
               <ChartCard title="Asset Allocation" height={230} className="lg:col-span-1">
                 <Donut data={(data.allocation || []).filter((a) => a.value > 0)} centerLabel="Assets" centerValue={inr(data.total_assets, { compact: true })} />

@@ -37,7 +37,7 @@ async def create_project(payload: dict, user: dict = Depends(require_admin)):
 
 @router.get("/projects/{item_id}")
 async def get_project(item_id: str, user: dict = Depends(require_admin)):
-    p = await db.projects.find_one({"_id": oid(item_id)})
+    p = await db.projects.find_one({"_id": oid(item_id), "deleted_at": {"$exists": False}})
     if not p:
         raise HTTPException(status_code=404, detail="Project not found")
     return serialize(p)
@@ -56,13 +56,38 @@ async def update_project(item_id: str, payload: dict, user: dict = Depends(requi
 
 @router.delete("/projects/{item_id}")
 async def delete_project(item_id: str, user: dict = Depends(require_admin)):
-    await db.projects.delete_one({"_id": oid(item_id)})
-    return {"status": "deleted"}
+    project = await db.projects.find_one({"_id": oid(item_id), "deleted_at": {"$exists": False}})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    now = now_utc()
+    parties = await db.parties.find(
+        {"project_id": item_id, "deleted_at": {"$exists": False}}
+    ).to_list(1000)
+    party_ids = [str(party["_id"]) for party in parties]
+    await db.projects.update_one({"_id": project["_id"]}, {"$set": {"deleted_at": now}})
+    await db.parties.update_many(
+        {"project_id": item_id, "deleted_at": {"$exists": False}},
+        {"$set": {"deleted_at": now}},
+    )
+    offboarded_users = await db.users.update_many(
+        {
+            "role": "PARTY_USER",
+            "$or": [
+                {"project_id": item_id},
+                {"party_id": {"$in": party_ids}},
+            ],
+        },
+        {"$set": {"active": False, "offboarded_at": now}},
+    )
+    await log_audit(user, "delete_project", "projects", item_id, {
+        "offboarded_party_users": offboarded_users.modified_count,
+    })
+    return {"status": "deleted", "id": item_id}
 
 
 @router.get("/projects/{item_id}/finance")
 async def project_finance(item_id: str, user: dict = Depends(require_admin)):
-    p = await db.projects.find_one({"_id": oid(item_id)})
+    p = await db.projects.find_one({"_id": oid(item_id), "deleted_at": {"$exists": False}})
     if not p:
         raise HTTPException(status_code=404, detail="Project not found")
     budget = round2(p.get("budget", 0))

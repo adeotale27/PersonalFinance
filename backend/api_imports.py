@@ -32,7 +32,7 @@ def detect_provider(filename, headers):
 def classify_row(row):
     clean = _clean_row(row); text = " ".join(str(value or "") for value in clean.values()).lower()
     name = clean.get("symbol") or clean.get("tradingsymbol") or clean.get("instrument") or clean.get("scrip") or clean.get("name") or "Imported investment"
-    pnl = next((_number(clean.get(key)) for key in ("realized_pnl", "realised_pnl", "p&l", "pnl", "profit_loss") if clean.get(key) not in (None, "")), None)
+    pnl = next((_number(clean.get(key)) for key in ("realized_pnl", "realised_pnl", "realized_p&l", "realised_p&l", "p&l", "pnl", "profit_loss") if clean.get(key) not in (None, "")), None)
     quantity = next((_number(clean.get(key)) for key in ("quantity", "qty", "net_quantity")), 0)
     value = next((_number(clean.get(key)) for key in ("current_value", "market_value", "value", "closing_value", "amount")), 0)
     cost = next((_number(clean.get(key)) for key in ("invested", "cost", "buy_value", "average_price")), 0)

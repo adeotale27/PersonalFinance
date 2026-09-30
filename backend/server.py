@@ -1,6 +1,7 @@
 """Nivara Finance API entrypoint."""
 import os
 import logging
+from urllib.parse import urlsplit
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -124,6 +125,11 @@ async def migrate_legacy_workspace_data() -> str:
 
 @app.on_event("startup")
 async def startup():
+    e2e_demo_mode = os.environ.get("NIVARA_E2E_DEMO", "").lower() == "true"
+    if e2e_demo_mode:
+        from core import DB_NAME, MONGO_URL
+        if urlsplit(MONGO_URL).hostname not in {"localhost", "127.0.0.1", "::1"} or not DB_NAME.startswith("nivara_e2e_"):
+            raise RuntimeError("NIVARA_E2E_DEMO requires a loopback MongoDB URL and a database name beginning with 'nivara_e2e_'")
     try:
         await raw_db.users.create_index("email", unique=True)
         await raw_db.login_attempts.create_index("identifier")
@@ -135,20 +141,27 @@ async def startup():
         logger.warning("Index setup: %s", e)
     await seed_admin()
     default_workspace = await migrate_legacy_workspace_data()
-    try:
-        from storage import init_storage
-        init_storage()
-        logger.info("Object storage initialized")
-    except Exception as e:
-        logger.warning("Storage init failed (uploads may not work yet): %s", e)
+    if e2e_demo_mode:
+        logger.info("Object storage initialization skipped in local E2E mode")
+    else:
+        try:
+            from storage import init_storage
+            init_storage()
+            logger.info("Object storage initialized")
+        except Exception as e:
+            logger.warning("Storage init failed (uploads may not work yet): %s", e)
     try:
         # Demo data belongs only to the original workspace, never to a new
         # household joining the same app.
         token = set_workspace(default_workspace)
         try:
-            from seed import seed_demo, seed_v2
+            from seed import ensure_demo_party_links, seed_demo, seed_v2
             await seed_demo()
             await seed_v2()
+            await ensure_demo_party_links()
+            if e2e_demo_mode:
+                from seed_e2e import seed_e2e
+                await seed_e2e()
         finally:
             reset_workspace(token)
     except Exception as e:

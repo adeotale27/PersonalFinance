@@ -14,6 +14,18 @@ def test_classifies_pnl_as_historical_not_current_holding():
     assert row["amount"] == -1250
 
 
+def test_classifies_realized_pnl_as_historical_without_inventing_a_holding():
+    row = classify_row({"Symbol": "TATAMOTORS", "Realized P&L": "-1250"})
+    assert row == {
+        "kind": "HISTORICAL_PNL",
+        "confidence": 0.91,
+        "name": "TATAMOTORS",
+        "isin": "",
+        "amount": -1250.0,
+        "reason": "Recognised a realised P&L field; it will not be treated as a current holding.",
+    }
+
+
 def test_detects_zerodha_from_financial_headers():
     assert detect_provider("statement.csv", ["tradingsymbol", "isin"])[0] == "ZERODHA"
 

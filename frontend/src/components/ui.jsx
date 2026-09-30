@@ -6,7 +6,7 @@ export function cx(...a) { return a.filter(Boolean).join(" "); }
 
 export function Card({ className, children, ...p }) {
   return (
-    <div className={cx("premium-card bg-surface rounded-2xl border border-line/90 shadow-card", className)} {...p}>
+    <div className={cx("premium-card bg-surface rounded-2xl border border-line/90 shadow-card transition-[transform,box-shadow,border-color] duration-300", className)} {...p}>
       {children}
     </div>
   );
@@ -23,7 +23,7 @@ export function Button({ variant = "primary", size = "md", className, children, 
   const sizes = { sm: "h-8 px-3 text-xs", md: "h-10 px-4 text-sm", lg: "h-11 px-5 text-sm" };
   return (
     <button
-      className={cx("inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98]",
+      className={cx("btn-depth inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-[transform,box-shadow,background-color,color] duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none active:scale-[.98]",
         variants[variant], sizes[size], className)}
       {...p}
     >
@@ -69,7 +69,7 @@ const badgeMap = {
   brand: "text-teal-700 bg-teal-50 border-teal-200",
 };
 export function Badge({ tone = "gray", children, className }) {
-  return <span className={cx("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border", badgeMap[tone] || badgeMap.gray, className)}>{children}</span>;
+  return <span className={cx("badge-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border", badgeMap[tone] || badgeMap.gray, className)}>{children}</span>;
 }
 
 const statusTones = {
@@ -94,8 +94,8 @@ export function Modal({ open, onClose, title, children, size = "md" }) {
   const w = { sm: "max-w-md", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4" data-testid="modal" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px] animate-fade-in" onClick={onClose} />
-      <div className={cx("relative bg-surface w-full rounded-t-2xl sm:rounded-2xl shadow-pop border border-line animate-fade-up max-h-[92vh] overflow-y-auto", w)}>
+      <div className="modal-backdrop absolute inset-0 bg-ink/40 backdrop-blur-[2px] animate-fade-in" onClick={onClose} />
+      <div className={cx("modal-panel relative bg-surface w-full rounded-t-2xl sm:rounded-2xl shadow-pop border border-line animate-fade-up max-h-[92vh] overflow-y-auto", w)}>
         <div className="sticky top-0 bg-surface/95 backdrop-blur border-b border-line px-5 py-4 flex items-center justify-between z-10">
           <h3 className="font-display font-semibold text-lg text-ink">{title}</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-subink" data-testid="modal-close"><X size={18} /></button>
@@ -115,7 +115,7 @@ export function DetailDrawer({ open, onClose, title, eyebrow, children, actions 
     return () => window.removeEventListener("keydown", close);
   }, [open, onClose]);
   if (!open) return null;
-  return createPortal(<div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label={title}><button aria-label="Close detail panel" className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px]" onClick={onClose}/><aside className="absolute right-0 top-0 h-full w-full max-w-[34rem] bg-white border-l border-line shadow-2xl animate-[slide-in_.22s_cubic-bezier(.16,1,.3,1)] overflow-y-auto"><div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-line px-6 py-5 flex items-start justify-between gap-4"><div><div className="overline text-faint">{eyebrow || "Financial detail"}</div><h2 className="font-display text-xl font-bold text-ink mt-1">{title}</h2></div><button onClick={onClose} className="p-2 rounded-lg hover:bg-muted text-subink" aria-label="Close"><X size={19}/></button></div><div className="p-6">{children}</div>{actions && <div className="sticky bottom-0 p-4 bg-white border-t border-line flex gap-2">{actions}</div>}</aside></div>, document.body);
+  return createPortal(<div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label={title}><button aria-label="Close detail panel" className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px]" onClick={onClose}/><aside className="detail-drawer absolute right-0 top-0 h-full w-full max-w-[34rem] bg-white border-l border-line shadow-2xl animate-[slide-in_.22s_cubic-bezier(.16,1,.3,1)] overflow-y-auto"><div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-line px-6 py-5 flex items-start justify-between gap-4"><div><div className="overline text-faint">{eyebrow || "Financial detail"}</div><h2 className="font-display text-xl font-bold text-ink mt-1">{title}</h2></div><button onClick={onClose} className="p-2 rounded-lg hover:bg-muted text-subink" aria-label="Close"><X size={19}/></button></div><div className="p-6">{children}</div>{actions && <div className="sticky bottom-0 p-4 bg-white border-t border-line flex gap-2">{actions}</div>}</aside></div>, document.body);
 }
 
 export function Spinner({ className }) { return <Loader2 className={cx("animate-spin", className)} />; }
@@ -140,15 +140,15 @@ export function StateBlock({ loading, error, empty, emptyText = "No records yet"
 
 export function PageHeader({ title, subtitle, actions, icon: Icon }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 mb-7">
-      <div className="flex items-start gap-3">
-        {Icon && <div className="w-11 h-11 rounded-xl bg-brand-light text-brand flex items-center justify-center shrink-0"><Icon size={22} /></div>}
+    <div className="page-header flex flex-wrap items-center justify-between gap-4 mb-7">
+      <div className="flex min-w-0 items-center gap-4">
+        {Icon && <div className="page-header__icon w-12 h-12 rounded-2xl bg-white text-brand flex items-center justify-center shrink-0"><Icon size={22} /></div>}
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-ink">{title}</h1>
-          {subtitle && <p className="text-sm text-subink mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-sm text-subink mt-1">{subtitle}</p>}
         </div>
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="page-header__actions flex items-center gap-2">{actions}</div>}
     </div>
   );
 }

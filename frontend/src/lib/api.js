@@ -5,22 +5,35 @@ export const API = `${BASE}/api`;
 
 const api = axios.create({ baseURL: API });
 const responseCache = new Map();
+const inFlightRequests = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
 
 export const invalidateCache = () => {
   responseCache.clear();
+  inFlightRequests.clear();
   window.dispatchEvent(new Event("nivara:data-changed"));
 };
 
 api.getCached = (url, config = {}) => {
   const token = localStorage.getItem("nivara_token") || "";
-  const key = `${token.slice(-12)}:${url}`;
+  const key = `${token}:${url}`;
+  const { force = false, ...requestConfig } = config;
   const cached = responseCache.get(key);
-  if (!config.force && cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve({ data: cached.data });
-  return api.get(url, config).then((response) => {
-    responseCache.set(key, { data: response.data, at: Date.now() });
-    return response;
-  });
+  if (!force && cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve({ data: cached.data });
+  if (inFlightRequests.has(key)) return inFlightRequests.get(key);
+  const request = api.get(url, requestConfig)
+    .then((response) => {
+      if (inFlightRequests.get(key) === request) {
+        responseCache.set(key, { data: response.data, at: Date.now() });
+        if (responseCache.size > 100) responseCache.delete(responseCache.keys().next().value);
+      }
+      return response;
+    })
+    .finally(() => {
+      if (inFlightRequests.get(key) === request) inFlightRequests.delete(key);
+    });
+  inFlightRequests.set(key, request);
+  return request;
 };
 
 api.interceptors.request.use((config) => {

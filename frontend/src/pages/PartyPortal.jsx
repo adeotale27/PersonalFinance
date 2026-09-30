@@ -1,11 +1,13 @@
 import React, { useRef, useState } from "react";
-import { FileUp, CheckCircle2 } from "lucide-react";
+import { FileUp, CheckCircle2, LogOut } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, Card, StateBlock, Button, Badge } from "../components/ui";
 import api, { apiError, docUrl } from "../lib/api";
 import { fmtDate, inr } from "../lib/format";
+import { useAuth } from "../lib/auth";
 
 export default function PartyPortal() {
+  const { logout } = useAuth();
   const portal = useFetch("/party-portal");
   const fileRef = useRef();
   const [busy, setBusy] = useState(false);
@@ -21,7 +23,8 @@ export default function PartyPortal() {
     try { await api.post(`/party-portal/payments/${id}/acknowledge`); portal.refetch(); }
     catch (e) { setError(apiError(e)); }
   };
-  return <><PageHeader title={data?.party?.name || "Party Portal"} subtitle="Only your project records and shared documents are visible here." icon={CheckCircle2}/>
+  return <><PageHeader title={data?.party?.name || "Party Portal"} subtitle="Only your project records and shared documents are visible here." icon={CheckCircle2}
+    actions={<Button variant="secondary" size="sm" onClick={logout} data-testid="party-logout"><LogOut size={15} /> Sign out</Button>} />
     <StateBlock loading={portal.loading} error={portal.error || error} onRetry={portal.refetch}>
       {data && <div className="space-y-6">
         <Card className="overflow-hidden"><div className="px-5 py-4 border-b border-line flex justify-between items-center"><h3 className="font-display font-semibold text-ink">Payments recorded for you</h3><Badge tone="brand">Private</Badge></div>

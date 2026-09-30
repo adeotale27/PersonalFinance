@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, TrendingUp, CreditCard, Handshake, Inbox,
   PiggyBank, ShieldCheck, Building2, Scale, FolderKanban, Users,
-  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search, Sparkles,
+  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search,
 } from "lucide-react";
 import { cx } from "./ui";
 import { useAuth } from "../lib/auth";
@@ -64,18 +64,23 @@ const MOBILE = [
 
 function Brand({ version, onVersion }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a5cff] to-[#14c9e8] text-white flex items-center justify-center shadow-lg shadow-indigo-900/20"><Sparkles size={16} strokeWidth={2.7}/></div>
+    <div className="brand-lockup flex items-center gap-2.5">
+      <img src="/brand/nivara-logo-mark.png" alt="" className="brand-mark h-11 w-11 rounded-xl border border-white/60 bg-white object-contain shadow-card" />
       <div className="leading-tight">
-        <div className="font-sans font-extrabold text-[13px] text-ink tracking-[-.045em]">NIVARA <span className="text-cyan-500">FINANCE</span></div>
-        <div className="text-[8px] text-faint font-semibold tracking-[.04em] -mt-0.5">PERSONAL FINANCIAL OS <button onClick={onVersion} className="ml-1 text-brand font-bold hover:underline focus:outline-none" title="Open version control">V{version}</button></div>
+        <div className="brand-name font-sans font-extrabold text-[14px] tracking-[-.045em]">NIVARA <span>FINANCE</span></div>
+        <div className="brand-tagline">BUILD · MANAGE · GROW <button onClick={onVersion} title="Open version control">V{version}</button></div>
       </div>
     </div>
   );
 }
 
 function NavItems({ onNavigate, collapsed = false }) {
-  const [openGroups, setOpenGroups] = useState(() => Object.fromEntries(NAV.map((g) => [g.group, true])));
+  const { pathname } = useLocation();
+  const [openGroups, setOpenGroups] = useState(() => Object.fromEntries(NAV.map((group) => [group.group, false])));
+  useEffect(() => {
+    const activeGroup = NAV.find((group) => group.items.some((item) => item.path === pathname || (item.path !== "/" && pathname.startsWith(`${item.path}/`))));
+    if (activeGroup) setOpenGroups((current) => current[activeGroup.group] ? current : { ...current, [activeGroup.group]: true });
+  }, [pathname]);
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
       {NAV.map((g) => (
@@ -85,7 +90,7 @@ function NavItems({ onNavigate, collapsed = false }) {
             {g.items.map((it) => (
               <NavLink key={it.path} to={it.path} end={it.path === "/"} onClick={onNavigate} data-testid={it.tid}
                 className={({ isActive }) => cx(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-bold transition-[background-color,color,transform,box-shadow]",
+                  "app-nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-bold transition-[background-color,color,transform,box-shadow]",
                   isActive ? "bg-gradient-to-r from-[#f3efff] to-[#f8fbff] text-brand-dark shadow-xs border-l-2 border-brand" : "text-subink hover:bg-muted hover:text-ink hover:translate-x-0.5"
                 )} title={collapsed ? it.name : undefined}>
                 <it.icon size={17} className="shrink-0" />
@@ -101,7 +106,7 @@ function NavItems({ onNavigate, collapsed = false }) {
 
 function HeaderClock() {
   const [now, setNow] = useState(new Date());
-  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 1000); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60000); return () => window.clearInterval(timer); }, []);
   const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "Local";
   return <div className="hidden xl:block text-right leading-tight whitespace-nowrap mr-1"><div className="text-[10px] font-extrabold text-ink">{now.toLocaleDateString(undefined, { weekday:"short", day:"2-digit", month:"short", year:"numeric" })}</div><div className="text-[9px] text-faint mt-0.5">{now.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit", hour12:true })} · {zone}</div></div>;
 }
@@ -149,6 +154,7 @@ function Notifications() {
 function OverdueAlertPopups() {
   const nav = useNavigate();
   const [items, setItems] = useState([]);
+  const [open, setOpen] = useState(false);
   const dismissed = useRef(new Set());
   const load = () => api.get("/notifications").then((response) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -161,7 +167,21 @@ function OverdueAlertPopups() {
   }, []);
   const dismiss = (id) => { dismissed.current.add(id); setItems((current) => current.filter((item) => item.id !== id)); };
   if (!items.length) return null;
-  return <div className="fixed right-4 top-24 z-[55] w-[min(24rem,calc(100vw-2rem))] space-y-2" aria-live="polite">{items.map((item) => <div key={item.id} className="rounded-xl border border-rose-200 bg-white p-3.5 shadow-pop animate-fade-up"><div className="flex items-start gap-3"><span className="mt-0.5 h-8 w-8 shrink-0 rounded-lg bg-rose-50 text-expense flex items-center justify-center"><BellRing size={16} /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-ink">{item.title}</p><p className="mt-0.5 text-xs text-subink">{item.message}{item.amount > 0 ? ` · ${inr(item.amount)}` : ""}</p><button onClick={() => { nav("/notifications"); }} className="mt-2 text-xs font-semibold text-brand">Review notification</button></div><button onClick={() => dismiss(item.id)} className="rounded-lg p-1 text-faint hover:bg-muted hover:text-ink" aria-label={`Dismiss ${item.title}`}><X size={16} /></button></div></div>)}</div>;
+  return <div className="overdue-dock fixed left-3 bottom-20 min-[981px]:left-auto min-[981px]:right-5 min-[981px]:bottom-5 z-[25] w-[min(22rem,calc(100vw-1.5rem))]" aria-live="polite">
+    <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="overdue-dock__trigger ml-auto flex items-center gap-2 rounded-full border border-rose-200/80 bg-white/95 px-3.5 py-2 text-xs font-bold text-ink shadow-pop backdrop-blur-xl transition hover:-translate-y-0.5">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-rose-50 text-expense"><BellRing size={14} /></span>
+      <span>{items.length} overdue {items.length === 1 ? "item" : "items"}</span>
+      <ChevronDown size={14} className={cx("text-faint transition-transform", open && "rotate-180")} />
+    </button>
+    {open && <div className="mt-2 max-h-[min(55vh,24rem)] space-y-2 overflow-y-auto rounded-2xl border border-line/80 bg-white/95 p-3 shadow-pop backdrop-blur-xl animate-fade-up">
+      <div className="flex items-center justify-between px-1 pb-1"><div><p className="text-sm font-bold text-ink">Needs attention</p><p className="text-[11px] text-subink">Overdue items, without interrupting your work.</p></div><button onClick={() => { setOpen(false); nav("/notifications"); }} className="text-xs font-bold text-brand hover:text-brand-dark">Review all</button></div>
+      {items.map((item) => <div key={item.id} className="flex items-start gap-2.5 rounded-xl border border-line/80 bg-muted/50 p-3">
+        <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-expense shadow-xs"><BellRing size={14} /></span>
+        <button onClick={() => { setOpen(false); nav("/notifications"); }} className="min-w-0 flex-1 text-left"><span className="block truncate text-xs font-bold text-ink">{item.title}</span><span className="mt-0.5 block text-[11px] leading-relaxed text-subink">{item.message}{item.amount > 0 ? ` · ${inr(item.amount)}` : ""}</span></button>
+        <button onClick={() => dismiss(item.id)} className="rounded-lg p-1 text-faint hover:bg-white hover:text-ink" aria-label={`Dismiss ${item.title}`}><X size={14} /></button>
+      </div>)}
+    </div>}
+  </div>;
 }
 
 export default function Layout({ children }) {
@@ -175,19 +195,30 @@ export default function Layout({ children }) {
   const nav = useNavigate();
   const loc = useLocation();
   const initials = (user?.name || user?.email || "A").slice(0, 1).toUpperCase();
+  const pageTitle = loc.pathname === "/"
+    ? "Overview"
+    : NAV.flatMap((group) => group.items).find((item) => item.path === loc.pathname)?.name
+      || (loc.pathname.startsWith("/projects/") ? "Project workspace" : "Nivara Finance");
   useEffect(() => { api.get("/error-logs/unread-count").then((r) => setErrorCount(r.data.count || 0)).catch(() => {}); }, [loc.pathname]);
   useEffect(() => { api.get("/version-history").then((r) => setVersion(r.data.current || "—")).catch(() => {}); }, []);
 
   return (
-    <div className="min-h-screen bg-bg flex">
+    <div className="app-shell min-h-screen bg-bg flex">
       {/* Desktop sidebar */}
-      <aside className={cx("bg-white/85 backdrop-blur-xl border-r border-slate-200/70 hidden min-[981px]:flex flex-col h-screen sticky top-0 z-30 transition-[width] duration-200", sidebarCollapsed ? "w-20" : "w-[15.5rem]")}>
-        <div className={cx("h-16 px-5 flex items-center", sidebarCollapsed ? "justify-center" : "justify-between")}><div className={sidebarCollapsed ? "hidden" : ""}><Brand version={version} onVersion={() => nav("/versions")} /></div>{sidebarCollapsed && <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8a5cff] to-[#14c9e8] text-white flex items-center justify-center"><Sparkles size={16}/></div>}<button onClick={() => setSidebarCollapsed((value) => !value)} className={cx("w-8 h-8 rounded-lg text-subink hover:bg-muted flex items-center justify-center", sidebarCollapsed && "absolute -right-4 bg-white border border-line shadow-sm")} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronRight size={16} className={cx("transition-transform", !sidebarCollapsed && "rotate-180")}/></button></div>
+      <aside className={cx("app-sidebar bg-white/85 backdrop-blur-xl border-r border-slate-200/70 hidden min-[981px]:flex flex-col h-screen sticky top-0 z-30 transition-[width] duration-300", sidebarCollapsed ? "w-20" : "w-[16.5rem]")}>
+        <div className={cx("app-brand-row h-[5rem] px-4 flex items-center", sidebarCollapsed ? "justify-center" : "justify-between")}>
+          <div className={sidebarCollapsed ? "hidden" : ""}><Brand version={version} onVersion={() => nav("/versions")} /></div>
+          {sidebarCollapsed && <img src="/brand/nivara-logo-mark.png" alt="Nivara Finance" className="brand-mark h-11 w-11 rounded-xl border border-white/60 bg-white object-contain shadow-card" />}
+          <button onClick={() => setSidebarCollapsed((value) => !value)} className={cx("sidebar-collapse w-8 h-8 rounded-lg text-subink hover:bg-muted flex items-center justify-center", sidebarCollapsed && "absolute -right-4 bg-white border border-line shadow-sm")} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}><ChevronRight size={16} className={cx("transition-transform", !sidebarCollapsed && "rotate-180")}/></button>
+        </div>
         <NavItems collapsed={sidebarCollapsed} />
-        <div className="p-3 border-t border-line">
-          <button onClick={logout} data-testid="logout-btn" className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-subink hover:bg-muted hover:text-expense transition-colors">
-            <LogOut size={17} /> Sign out
-          </button>
+        <div className="sidebar-footer">
+          {!sidebarCollapsed && <div className="sidebar-profile">
+            <div className="sidebar-profile__avatar">{initials}</div>
+            <div className="min-w-0 flex-1"><div className="truncate text-xs font-bold">{user?.name || "Workspace admin"}</div><div className="truncate text-[10px]">{user?.email || "Private workspace"}</div></div>
+            <button onClick={logout} data-testid="logout-btn" className="sidebar-signout" aria-label="Sign out" title="Sign out"><LogOut size={16} /></button>
+          </div>}
+          {sidebarCollapsed && <button onClick={logout} data-testid="logout-btn" className="sidebar-signout sidebar-signout--collapsed" aria-label="Sign out" title="Sign out"><LogOut size={17} /></button>}
         </div>
       </aside>
 
@@ -195,7 +226,7 @@ export default function Layout({ children }) {
       {drawer && (
         <div className="fixed inset-0 z-50 min-[981px]:hidden">
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]" onClick={() => setDrawer(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-surface flex flex-col animate-fade-in">
+          <div className="app-mobile-drawer absolute left-0 top-0 bottom-0 w-72 bg-surface flex flex-col animate-fade-in">
             <div className="h-16 px-5 flex items-center justify-between border-b border-line">
               <Brand version={version} onVersion={() => { setDrawer(false); nav("/versions"); }} /><button onClick={() => setDrawer(false)} className="p-1.5 text-subink"><X size={20} /></button>
             </div>
@@ -209,17 +240,18 @@ export default function Layout({ children }) {
 
       {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 px-4 sm:px-5 bg-white/75 backdrop-blur-xl border-b border-line/70 sticky top-0 z-20 flex items-center justify-between gap-3">
+        <header className="app-header h-16 px-4 sm:px-5 bg-white/75 backdrop-blur-xl border-b border-line/70 sticky top-0 z-20 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-[981px]:hidden">
             <button onClick={() => setDrawer(true)} className="min-[981px]:hidden p-2 -ml-2 text-subink" data-testid="menu-btn"><Menu size={22} /></button>
-            <div className="min-[981px]:hidden"><span className="font-display font-semibold text-lg text-ink">Overview</span></div>
+            <div className="min-[981px]:hidden"><span className="font-display font-semibold text-lg text-ink">{pageTitle}</span></div>
           </div>
+          <div className="hidden min-[1200px]:flex items-center gap-2.5 text-sm font-extrabold tracking-tight text-ink"><span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_0_4px_rgba(75,91,229,.10)]" />{pageTitle}</div>
           <GlobalSearch />
           <div className="flex items-center gap-2 sm:gap-3">
             <HeaderClock />
             <Notifications />
             <button onClick={() => setQuickAdd(true)} data-testid="header-quick-add"
-              className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-4 rounded-full bg-gradient-to-r from-[#8459f6] to-[#ed5d87] text-white text-[10px] font-extrabold hover:brightness-105 transition shadow-[0_7px_15px_rgba(141,77,237,.22)]">
+              className="header-record inline-flex items-center gap-1.5 h-9 px-3.5 sm:px-4 rounded-full bg-gradient-to-r from-brand to-[#16a8b7] text-white text-[10px] font-extrabold hover:brightness-105 transition shadow-[0_8px_18px_rgba(75,91,229,.24)]">
               <Plus size={14} /><span className="hidden sm:inline">Record</span>
             </button>
             <div className="relative flex items-center gap-2 pl-1">
@@ -234,13 +266,13 @@ export default function Layout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-[1540px] w-full mx-auto pb-28 min-[981px]:pb-10" key={loc.pathname}>
+        <main className="app-main flex-1 p-4 sm:p-6 lg:p-8 max-w-[1540px] w-full mx-auto pb-28 min-[981px]:pb-10" key={loc.pathname}>
           <div className="animate-fade-up">{children}</div>
         </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <div className="mobile-safe-bottom min-[981px]:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-lg border-t border-line z-30 flex items-center justify-around px-2">
+      <div className="app-mobile-nav mobile-safe-bottom min-[981px]:hidden fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-lg border-t border-line z-30 flex items-center justify-around px-2">
         {MOBILE.map((m) => (
           <NavLink key={m.path} to={m.path} end={m.path === "/"} data-testid={m.tid}
             className={({ isActive }) => cx("flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg text-[10px] font-semibold",
