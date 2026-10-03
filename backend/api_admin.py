@@ -27,6 +27,29 @@ async def available_login_id(name: str) -> str:
         number += 1
 
 
+@router.get("/sitewalkthrough/status")
+async def get_sitewalkthrough_status():
+    setting = await raw_db.platform_settings.find_one({"_id": "sitewalkthrough"})
+    return {"enabled": setting.get("enabled", True) if setting else True}
+
+
+@router.put("/sitewalkthrough/status")
+async def update_sitewalkthrough_status(payload: dict, user: dict = Depends(require_admin)):
+    if not is_platform_admin(user):
+        raise HTTPException(status_code=403, detail="Only the platform administrator can manage the public walkthrough")
+    enabled = payload.get("enabled")
+    if not isinstance(enabled, bool):
+        raise HTTPException(status_code=400, detail="Enabled must be a boolean")
+
+    await raw_db.platform_settings.update_one(
+        {"_id": "sitewalkthrough"},
+        {"$set": {"enabled": enabled, "updated_at": now_utc(), "updated_by": str(user["_id"])}},
+        upsert=True,
+    )
+    await log_audit(user, "update_sitewalkthrough", "platform_settings", "sitewalkthrough", {"enabled": enabled})
+    return {"enabled": enabled}
+
+
 # ---------------- family members ----------------
 @router.get("/family")
 async def list_family(user: dict = Depends(require_admin)):

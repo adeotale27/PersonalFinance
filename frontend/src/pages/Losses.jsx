@@ -5,11 +5,12 @@ import KpiCard from "../components/KpiCard";
 import { ChartCard, Bars, TrendLine } from "../components/charts";
 import api, { apiError } from "../lib/api";
 import { inr, todayISO } from "../lib/format";
+import { isDemoMode } from "../lib/demoData";
 
 const TOKEN_KEY = "nivara_losses_token";
 
 export default function Losses() {
-  const [token, setToken] = useState(() => sessionStorage.getItem(TOKEN_KEY) || "");
+  const [token, setToken] = useState(() => isDemoMode() ? "demo-loss-token" : sessionStorage.getItem(TOKEN_KEY) || "");
   const [password, setPassword] = useState("");
   const [unlockError, setUnlockError] = useState("");
   const [unlocking, setUnlocking] = useState(false);
@@ -39,7 +40,8 @@ export default function Losses() {
     setUnlocking(true); setUnlockError("");
     try {
       const res = await api.post("/losses/unlock", { password });
-      sessionStorage.setItem(TOKEN_KEY, res.data.token); setToken(res.data.token); setPassword("");
+      if (!isDemoMode()) sessionStorage.setItem(TOKEN_KEY, res.data.token);
+      setToken(res.data.token); setPassword("");
     } catch (e) { setUnlockError(apiError(e)); } finally { setUnlocking(false); }
   };
   const categories = (form.group === "Stock Market" ? ["FnO", "Equity", "Mutual Fund"] : form.group === "Forex" ? ["Exness Loss"] : form.group === "Farm" ? ["Farm Loss"] : ["Crypto / Digital Assets", "Business", "Property", "Vehicle", "Medical", "Legal / Tax", "Fraud / Theft", "Defaulted Lending", "Unanticipated Loss", "Other Loss"]).concat("Add custom category…");

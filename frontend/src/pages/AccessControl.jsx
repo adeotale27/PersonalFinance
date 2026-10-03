@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { KeyRound, Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
+import { KeyRound, Plus, Pencil, Trash2, ShieldCheck, Compass } from "lucide-react";
 import { useFetch } from "../lib/useFetch";
 import { PageHeader, StateBlock, Card, Button, Modal, Field, Input, Select, Badge, cx } from "../components/ui";
 import api, { apiError } from "../lib/api";
@@ -19,8 +19,31 @@ export default function AccessControl() {
   const [grants, setGrants] = useState({}); // projectId -> {project_name, modules:{}}
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [walkthroughEnabled, setWalkthroughEnabled] = useState(null);
+  const [walkthroughBusy, setWalkthroughBusy] = useState(false);
+  const [walkthroughError, setWalkthroughError] = useState("");
 
   const modules = meta.data?.modules || [];
+  React.useEffect(() => {
+    if (!currentUser?.is_platform_admin) return;
+    api.get("/sitewalkthrough/status")
+      .then(({ data }) => setWalkthroughEnabled(data.enabled))
+      .catch((error) => setWalkthroughError(apiError(error)));
+  }, [currentUser?.is_platform_admin]);
+
+  const setWalkthrough = async (enabled) => {
+    setWalkthroughBusy(true);
+    setWalkthroughError("");
+    try {
+      const { data } = await api.put("/sitewalkthrough/status", { enabled });
+      setWalkthroughEnabled(data.enabled);
+    } catch (error) {
+      setWalkthroughError(apiError(error));
+    } finally {
+      setWalkthroughBusy(false);
+    }
+  };
+
   const suggestedLogin = (name) => {
     const last = String(name || "").trim().split(/\s+/).pop();
     return last ? `${last.replace(/[^a-z0-9]/gi, "").toLowerCase()}@nivara.com` : "";
@@ -72,6 +95,31 @@ export default function AccessControl() {
     <>
       <PageHeader title={currentUser?.is_platform_admin ? "Platform access control" : "Access Control"} subtitle={currentUser?.is_platform_admin ? "Manage every finance owner and their workspace users." : "Grant granular, per-project, per-module access to parties and family."} icon={KeyRound}
         actions={<Button size="sm" onClick={openAdd} data-testid="add-user"><Plus size={15} /> Add user</Button>} />
+
+      {currentUser?.is_platform_admin && <Card className="mb-5 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Compass size={19} className="mt-0.5 shrink-0 text-brand" />
+            <div>
+              <h2 className="font-display font-semibold text-ink">Public site walkthrough</h2>
+              <p className="mt-1 text-sm text-subink">Allow visitors to view the public product tour and enter the sample demo.</p>
+            </div>
+          </div>
+          <label className="inline-flex items-center gap-3 text-sm font-semibold text-ink">
+            <span>{walkthroughEnabled === null ? "Loading…" : walkthroughEnabled ? "On" : "Off"}</span>
+            <input
+              aria-label="Enable public site walkthrough"
+              type="checkbox"
+              checked={walkthroughEnabled === true}
+              disabled={walkthroughEnabled === null || walkthroughBusy}
+              onChange={(event) => setWalkthrough(event.target.checked)}
+              className="h-5 w-5 accent-indigo-600 disabled:cursor-not-allowed"
+              data-testid="sitewalkthrough-toggle"
+            />
+          </label>
+        </div>
+        {walkthroughError && <p role="alert" className="mt-3 text-sm text-expense">{walkthroughError}</p>}
+      </Card>}
 
       <Card className="overflow-hidden">
         <StateBlock loading={users.loading} error={users.error} empty={rows.length === 0} onRetry={users.refetch}>

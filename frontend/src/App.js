@@ -37,11 +37,12 @@ const ReviewInbox = lazy(() => import("./pages/ReviewInbox"));
 const VersionControl = lazy(() => import("./pages/VersionControl"));
 const SmartImport = lazy(() => import("./pages/SmartImport"));
 const PartyPortal = lazy(() => import("./pages/PartyPortal"));
+const SiteWalkthrough = lazy(() => import("./pages/SiteWalkthrough"));
 
 function Protected({ children }) {
-  const { user, checking } = useAuth();
+  const { user, checking, demoMode } = useAuth();
   if (checking) return <div className="min-h-screen flex items-center justify-center"><Spinner className="w-7 h-7 text-brand" /></div>;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user && !demoMode) return <Navigate to="/login" replace />;
   return user.role === "PARTY_USER" ? <PartyPortal /> : <Layout>{children}</Layout>;
 }
 
@@ -51,6 +52,7 @@ function Shell() {
   return (
     <Routes>
       <Route path="/login" element={checking ? null : user ? <Navigate to="/" replace /> : <Suspense fallback={null}><Login /></Suspense>} />
+      <Route path="/sitewalkthrough" element={<Suspense fallback={<div className="min-h-screen grid place-items-center"><Spinner className="w-7 h-7 text-brand" /></div>}><SiteWalkthrough /></Suspense>} />
       <Route path="/" element={guarded(Overview)} />
       <Route path="/cash-flow" element={guarded(CashFlow)} />
       <Route path="/accounts" element={guarded(Accounts)} />
