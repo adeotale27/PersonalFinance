@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, Wallet, TrendingUp, CreditCard, Handshake, Inbox,
   PiggyBank, ShieldCheck, Building2, Scale, FolderKanban, Users,
-  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search,
+  FileText, Settings, Plus, LogOut, Menu, X, ShieldAlert, Landmark, Umbrella, Sprout, LockKeyhole, Bell, BookOpen, BellRing, ChevronRight, CarFront, Target, ChevronDown, CalendarDays, Calculator, Clock3, Upload, Search, Sparkles,
 } from "lucide-react";
 import { cx } from "./ui";
 import { useAuth } from "../lib/auth";
@@ -185,7 +185,7 @@ function OverdueAlertPopups() {
 }
 
 export default function Layout({ children }) {
-  const { user, logout } = useAuth();
+  const { user, logout, demoMode } = useAuth();
   const [drawer, setDrawer] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [quickAdd, setQuickAdd] = useState(false);
@@ -267,6 +267,10 @@ export default function Layout({ children }) {
         </header>
 
         <main className="app-main flex-1 p-4 sm:p-6 lg:p-8 max-w-[1540px] w-full mx-auto pb-28 min-[981px]:pb-10" key={loc.pathname}>
+          {demoMode && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 via-white to-teal-50 px-4 py-3 shadow-sm" role="status">
+            <div className="flex items-start gap-3"><span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700"><Sparkles size={16} /></span><div><p className="text-sm font-bold text-ink">Public demo workspace</p><p className="text-xs text-subink">Explore freely. Changes are temporary and are never saved to the database.</p></div></div>
+            <button onClick={logout} className="rounded-full border border-indigo-200 bg-white px-3.5 py-2 text-xs font-bold text-indigo-700 transition hover:bg-indigo-50">Exit demo</button>
+          </div>}
           <div className="animate-fade-up">{children}</div>
         </main>
       </div>

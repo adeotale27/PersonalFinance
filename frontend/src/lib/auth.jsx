@@ -1,13 +1,20 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import api, { apiError } from "./api";
+import { demoUser, isDemoMode } from "./demoData";
 
 const AuthCtx = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null); // null=checking, false=anon, obj=user
   const [checking, setChecking] = useState(true);
+  const [demoMode, setDemoMode] = useState(isDemoMode);
 
   useEffect(() => {
+    if (isDemoMode()) {
+      setUser(demoUser());
+      setChecking(false);
+      return;
+    }
     const token = localStorage.getItem("nivara_token");
     if (!token) { setUser(false); setChecking(false); return; }
     api.get("/auth/me")
@@ -18,6 +25,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     try {
+      window.sessionStorage.removeItem("nivara_demo_mode");
+      setDemoMode(false);
       const { data } = await api.post("/auth/login", { email, password });
       localStorage.setItem("nivara_token", data.access_token);
       setUser(data.user);
@@ -28,13 +37,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
+    if (isDemoMode()) {
+      window.sessionStorage.removeItem("nivara_demo_mode");
+      setDemoMode(false);
+      setUser(false);
+      window.location.href = "/sitewalkthrough";
+      return;
+    }
     try { await api.post("/auth/logout"); } catch (_) {}
     localStorage.removeItem("nivara_token");
     setUser(false);
     window.location.href = "/login";
   }, []);
 
-  return <AuthCtx.Provider value={{ user, checking, login, logout }}>{children}</AuthCtx.Provider>;
+  const enterDemo = useCallback(() => {
+    window.sessionStorage.setItem("nivara_demo_mode", "true");
+    setDemoMode(true);
+    setUser(demoUser());
+    setChecking(false);
+    window.dispatchEvent(new Event("nivara:data-changed"));
+  }, []);
+
+  return <AuthCtx.Provider value={{ user, checking, login, logout, demoMode, enterDemo }}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

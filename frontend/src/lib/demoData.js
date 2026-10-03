@@ -1,0 +1,572 @@
+const monthKey = (offset = 0) => {
+  const date = new Date();
+  date.setDate(1);
+  date.setMonth(date.getMonth() - offset);
+  return date.toISOString().slice(0, 7);
+};
+const dateInMonth = (offset, day) => `${monthKey(offset)}-${String(day).padStart(2, "0")}`;
+const accounts = [
+  { id: "account-hdfc", name: "HDFC Salary Account", type: "BANK", bank_name: "HDFC Bank", masked_number: "••4821", opening_balance: 250000, current_balance: 468500, owner: "Self", currency: "INR", status: "ACTIVE" },
+  { id: "account-icici", name: "ICICI Savings", type: "BANK", bank_name: "ICICI Bank", masked_number: "••7734", opening_balance: 480000, current_balance: 542000, owner: "Self", currency: "INR", status: "ACTIVE" },
+  { id: "account-cash", name: "Cash in Hand", type: "CASH", opening_balance: 65000, current_balance: 61200, owner: "Self", currency: "INR", status: "ACTIVE" },
+  { id: "account-project", name: "SBI Project Account", type: "BANK", bank_name: "State Bank of India", masked_number: "••1290", opening_balance: 1500000, current_balance: 2240000, owner: "Self", currency: "INR", status: "ACTIVE" },
+];
+const family = [
+  { id: "family-self", name: "Self", relation: "Self", notes: "Primary account holder" },
+  { id: "family-priya", name: "Priya", relation: "Spouse", notes: "Family member" },
+  { id: "family-aarav", name: "Aarav", relation: "Child", notes: "Family member" },
+];
+
+const projects = [
+  { id: "project-skyline", name: "Skyline Heights Residence", type: "Construction", description: "A modern family home taking shape in Whitefield.", location: "Whitefield, Bangalore", start_date: dateInMonth(5, 1), target_completion_date: dateInMonth(-7, 1), budget: 8500000, currency: "INR", status: "ACTIVE", progress: 68, image_url: "" },
+  { id: "project-orchard", name: "Orchard Renewal", type: "Agriculture", description: "A phased upgrade to the family orchard.", location: "Junnar, Pune", start_date: dateInMonth(2, 1), target_completion_date: dateInMonth(9, 1), budget: 1250000, currency: "INR", status: "ACTIVE", progress: 34, image_url: "" },
+];
+
+const parties = [
+  { id: "party-architect", project_id: projects[0].id, name: "Arjun Design Studio", party_type: "Architect", scope: "Design & Drawings", contact: "arjun@example.com", contract_value: 600000 },
+  { id: "party-civil", project_id: projects[0].id, name: "BuildRight Civil", party_type: "Civil Contractor", scope: "Civil & Structural", contact: "hello@example.com", contract_value: 4200000 },
+  { id: "party-plumbing", project_id: projects[0].id, name: "FlowTech Plumbing", party_type: "Plumber", scope: "Plumbing", contact: "flowtech@example.com", contract_value: 480000 },
+  { id: "party-electrical", project_id: projects[0].id, name: "Voltas Electricals", party_type: "Electrician", scope: "Electrical", contact: "voltas@example.com", contract_value: 520000 },
+  { id: "party-orchard", project_id: projects[1].id, name: "Junnar Farm Services", party_type: "Contractor", scope: "Irrigation and orchard improvements", contact: "projects@example.com", contract_value: 600000 },
+];
+
+const transactions = [];
+for (let m = 0; m < 8; m += 1) {
+  transactions.push(
+    { id: `income-salary-${m}`, type: "INCOME", date: dateInMonth(m, 2), amount: 185000, account_id: accounts[0].id, source: "Salary", scope: "PERSONAL", payment_mode: "Bank Transfer", description: "Monthly salary" },
+    { id: `income-rent-${m}`, type: "INCOME", date: dateInMonth(m, 10), amount: 42000, account_id: accounts[1].id, source: "Rental", scope: "PERSONAL", payment_mode: "UPI", description: "Rent received" },
+    { id: `income-investment-${m}`, type: "INCOME", date: dateInMonth(m, 15), amount: 18500, account_id: accounts[1].id, source: "Dividend", scope: "PERSONAL", description: "Investment payout" },
+    { id: `expense-home-${m}`, type: "EXPENSE", date: dateInMonth(m, 5), amount: 32000, account_id: accounts[0].id, category: "Household", scope: "PERSONAL", payment_mode: "UPI", description: "Household essentials" },
+    { id: `expense-food-${m}`, type: "EXPENSE", date: dateInMonth(m, 12), amount: 21000, account_id: accounts[0].id, category: "Food", scope: "PERSONAL", payment_mode: "UPI", description: "Groceries & dining" },
+    { id: `expense-emi-${m}`, type: "EXPENSE", date: dateInMonth(m, 3), amount: 45500, account_id: accounts[0].id, category: "EMI", scope: "PERSONAL", payment_mode: "Bank Transfer", description: "Monthly home loan EMI" },
+    { id: `expense-travel-${m}`, type: "EXPENSE", date: dateInMonth(m, 18), amount: 12000 + (m % 2) * 8000, account_id: accounts[0].id, category: "Travel", scope: "PERSONAL", payment_mode: "UPI", description: "Travel & transport" },
+    { id: `project-expense-civil-${m}`, type: "EXPENSE", date: dateInMonth(m, 8), amount: 420000, account_id: accounts[3].id, category: "Civil", party: "BuildRight Civil", party_id: parties[1].id, scope: "PROJECT", project_id: projects[0].id, payment_mode: "Bank Transfer", payment_status: "RECORDED", description: "Construction milestone" },
+  );
+}
+for (let m = 0; m < 4; m += 1) {
+  transactions.push({
+    id: `project-expense-orchard-${m}`, type: "EXPENSE", date: dateInMonth(m, 14), amount: 85000,
+    account_id: accounts[3].id, category: ["Irrigation", "Equipment", "Materials", "Labour"][m],
+    party: "Junnar Farm Services", party_id: "party-orchard", scope: "PROJECT",
+    project_id: projects[1].id, payment_mode: "Bank Transfer", payment_status: "RECORDED",
+    description: "Orchard improvement milestone",
+  });
+}
+
+const lending = [
+  { id: "lending-rahul", direction: "LENT", counterparty: "Rahul Sharma", amount: 200000, date: dateInMonth(4, 4), purpose: "Business support", interest_rate: 0, due_date: dateInMonth(-1, 15), repayments: [{ date: dateInMonth(2, 5), amount: 50000, note: "Installment received" }], notes: "On track" },
+  { id: "lending-meena", direction: "LENT", counterparty: "Meena Patel", amount: 75000, date: dateInMonth(6, 9), purpose: "Personal loan", interest_rate: 0, due_date: dateInMonth(0, 24), repayments: [], notes: "Follow-up scheduled" },
+  { id: "lending-kiran", direction: "LENT", counterparty: "Kiran Rao", amount: 120000, date: dateInMonth(3, 14), purpose: "Home renovation", interest_rate: 0, due_date: dateInMonth(2, 10), repayments: [{ date: dateInMonth(1, 15), amount: 120000, note: "Settled" }], notes: "" },
+  { id: "lending-axis", direction: "BORROWED", counterparty: "Axis Bank Personal Loan", amount: 800000, date: dateInMonth(11, 2), purpose: "Property improvement", interest_rate: 10.5, due_date: dateInMonth(1, 5), repayments: [{ date: dateInMonth(2, 5), amount: 150000 }, { date: dateInMonth(1, 5), amount: 150000 }], notes: "Monthly EMI" },
+];
+
+const savings = [
+  { id: "saving-emergency", name: "Emergency Fund", type: "SAVINGS", institution: "ICICI Bank", owner: "Self", current_value: 350000, interest_rate: 6.5, contributions: [{ date: dateInMonth(2, 10), amount: 50000 }, { date: dateInMonth(0, 10), amount: 50000 }] },
+  { id: "saving-fd", name: "HDFC Fixed Deposit", type: "FD", institution: "HDFC Bank", owner: "Self", current_value: 500000, interest_rate: 7.1, start_date: dateInMonth(6, 1), maturity_date: dateInMonth(-5, 1), contributions: [] },
+  { id: "saving-rd", name: "Family Recurring Deposit", type: "RD", institution: "SBI", owner: "Priya", current_value: 120000, interest_rate: 6.8, contributions: [{ date: dateInMonth(1, 10), amount: 10000 }, { date: dateInMonth(0, 10), amount: 10000 }] },
+];
+
+const pfPpf = [
+  { id: "retirement-epf", kind: "PF", institution: "EPFO", account_number: "••••3421", owner: "Self", opening_balance: 850000, current_balance: 985000, contributions: [{ date: dateInMonth(1, 2), amount: 22000, type: "EMPLOYEE" }, { date: dateInMonth(0, 2), amount: 22000, type: "EMPLOYEE" }] },
+  { id: "retirement-ppf", kind: "PPF", institution: "SBI", account_number: "••••9902", owner: "Self", opening_balance: 620000, current_balance: 705000, maturity_date: dateInMonth(-40, 1), contributions: [{ date: dateInMonth(1, 15), amount: 50000, type: "SELF" }] },
+];
+
+const investments = [
+  { id: "investment-mf", type: "Mutual Fund", name: "Nippon India Growth", cost: 300000, current_value: 412000, owner: "Self" },
+  { id: "investment-equity", type: "Stocks", name: "Equity Portfolio", cost: 500000, current_value: 638000, owner: "Self" },
+  { id: "investment-index", type: "Index Fund", name: "Nifty 50 Index Fund", cost: 225000, current_value: 264500, owner: "Priya" },
+];
+
+const assets = [
+  { id: "asset-plot", type: "Property", name: "Residential Plot · Whitefield", purchase_value: 3500000, current_value: 5200000, owner: "Self" },
+  { id: "asset-car", type: "Vehicle", name: "Hyundai Creta", purchase_value: 1600000, current_value: 1250000, owner: "Self" },
+  { id: "asset-bike", type: "Vehicle", name: "TVS Apache RTR", purchase_value: 145000, current_value: 95000, owner: "Self" },
+];
+
+const liabilities = [
+  { id: "liability-home", type: "Loan", name: "Home Loan · HDFC", principal: 4000000, outstanding: 2850000, interest_rate: 8.4, due_date: dateInMonth(-180, 1) },
+];
+
+const loans = [
+  { id: "loan-woodsville", name: "Godrej Woodsville Home Loan", lender: "ICICI Bank", branch: "Pune", type: "Home Loan", account_name: "Family", property: "Godrej Woodsville Township", sanctioned: 7000000, disbursed: 6890624, emi: 54570, interest_rate: 7.3, outstanding: 4984251, start_date: "2023-06-04", next_due_date: dateInMonth(0, 4), maturity_date: "2038-11-04", tenure_months: 174, status: "Open", notes: "EMI scheduled monthly." },
+];
+
+const insurance = [
+  { id: "insurance-car", type: "Car", policy_name: "Creta Motor Insurance", provider: "ICICI Lombard", insured: "Self", asset_ref: "MH12TN6513", premium: 28000, frequency: "Yearly", sum_insured: 1250000, renewal_date: dateInMonth(1, 15), status: "Active", payments: [{ date: dateInMonth(-12, 12), amount: 26500, note: "Previous renewal" }] },
+  { id: "insurance-bike", type: "Bike", policy_name: "Apache Two-Wheeler Cover", provider: "Bajaj Allianz", insured: "Self", asset_ref: "Apache RTR", premium: 4200, frequency: "Yearly", sum_insured: 95000, renewal_date: dateInMonth(4, 15), status: "Active", payments: [] },
+  { id: "insurance-health", type: "Health", policy_name: "Family Health Floater", provider: "Star Health", insured: "Family", premium: 32000, frequency: "Yearly", sum_insured: 1000000, renewal_date: dateInMonth(6, 10), status: "Active", payments: [{ date: dateInMonth(-7, 8), amount: 32000, note: "Annual premium" }] },
+];
+
+const rentalProperties = [{
+  id: "rental-oakridge", name: "Oakridge Villa", address: "12 Green Terraces, Bangalore", current_value: 7800000,
+  units: [
+    { name: "Ground Floor", tenant: "Suresh Kumar", monthly_rent: 28000, deposit: 150000, status: "OCCUPIED" },
+    { name: "First Floor", tenant: "Anita Desai", monthly_rent: 24000, deposit: 120000, status: "OCCUPIED" },
+  ],
+}];
+const rentalPayments = Array.from({ length: 8 }, (_, m) => [
+  { id: `rent-ground-${m}`, property_id: rentalProperties[0].id, property_name: "Oakridge Villa", unit: "Ground Floor", tenant: "Suresh Kumar", period: monthKey(m), due_date: dateInMonth(m, 5), amount_due: 28000, amount_received: m === 0 ? 0 : 28000, status: m === 0 ? "PENDING" : "COLLECTED" },
+  { id: `rent-first-${m}`, property_id: rentalProperties[0].id, property_name: "Oakridge Villa", unit: "First Floor", tenant: "Anita Desai", period: monthKey(m), due_date: dateInMonth(m, 5), amount_due: 24000, amount_received: 24000, status: "COLLECTED" },
+]).flat();
+
+const farms = [
+  { id: "farm-block-a", name: "Guava Farm · Block A", number: "GF-001", area: 4.5, area_unit: "acre", crop: "Guava · Allahabad Safeda", location: "Junnar, Pune", notes: "260 trees" },
+  { id: "farm-block-b", name: "Guava Farm · Block B", number: "GF-002", area: 3, area_unit: "acre", crop: "Guava · Taiwan Pink", location: "Junnar, Pune", notes: "180 trees" },
+];
+const farmRentPayments = [
+  { id: "farm-rent-a", farm_id: farms[0].id, farm_name: farms[0].name, tenant: "Green Valley Produce", period: String(new Date().getFullYear()), due_date: dateInMonth(0, 10), amount_due: 80000, amount_received: 40000, status: "PARTIAL" },
+  { id: "farm-rent-b", farm_id: farms[1].id, farm_name: farms[1].name, tenant: "Junnar Fresh Co-op", period: String(new Date().getFullYear()), due_date: dateInMonth(0, 18), amount_due: 40000, amount_received: 20000, status: "PARTIAL" },
+];
+for (let m = 0; m < 6; m += 1) {
+  farms.forEach((farm, index) => {
+    transactions.push(
+      { id: `farm-income-${index}-${m}`, type: "INCOME", date: dateInMonth(m, 12), amount: 85000 - index * 20000, scope: "FARM", farm_id: farm.id, source: "Guava Sale", category: "Guava Sale", description: "Fresh produce sale" },
+      { id: `farm-expense-${index}-${m}`, type: "EXPENSE", date: dateInMonth(m, 8), amount: 44000 - index * 3000, scope: "FARM", farm_id: farm.id, category: "Farm operations", description: "Seasonal farm operations" },
+    );
+  });
+}
+
+const documents = [
+  { id: "document-home", filename: "Home-loan statement.pdf", category: "Loan", owner: "Self", project_id: "", created_at: dateInMonth(0, 4), size: 347000, official: true },
+  { id: "document-build", filename: "Construction estimate.pdf", category: "Project", owner: "Self", project_id: projects[0].id, created_at: dateInMonth(1, 16), size: 512000, official: true },
+  { id: "document-insurance", filename: "Family health policy.pdf", category: "Insurance", owner: "Family", project_id: "", created_at: dateInMonth(2, 8), size: 218000, official: true },
+];
+
+const diary = [
+  { id: "diary-1", date: dateInMonth(0, 3), title: "Quarterly money review", body: "Reviewed cash flow, upcoming renewals and project milestones.", tags: ["review", "planning"], mood: "Focused" },
+  { id: "diary-2", date: dateInMonth(0, 1), title: "Construction milestone", body: "First-floor work is progressing well; next payment is scheduled after inspection.", tags: ["project"], mood: "Positive" },
+];
+
+const goals = [
+  { id: "goal-home", name: "Complete family home", target_amount: 8500000, current_amount: 5780000, target_date: dateInMonth(-10, 1), status: "ACTIVE", category: "Property" },
+  { id: "goal-education", name: "Aarav education fund", target_amount: 2500000, current_amount: 740000, target_date: dateInMonth(-60, 1), status: "ACTIVE", category: "Education" },
+  { id: "goal-emergency", name: "6-month emergency fund", target_amount: 900000, current_amount: 350000, target_date: dateInMonth(-8, 1), status: "ACTIVE", category: "Savings" },
+];
+
+const notifications = [
+  { id: "notification-renewal", title: "Insurance renewal coming up", message: "Creta Motor Insurance renews soon.", kind: "INSURANCE_RENEWAL", severity: "warning", status: "OPEN", due_date: dateInMonth(0, 15), amount: 28000, action: { label: "Review policy", path: "/insurance" }, created_at: dateInMonth(0, 1) },
+  { id: "notification-budget", title: "Project milestone updated", message: "Skyline Heights has reached 68% completion.", kind: "PROJECT_UPDATE", severity: "info", status: "OPEN", due_date: dateInMonth(0, 20), amount: 0, action: { label: "Open project", path: `/projects/${projects[0].id}` }, created_at: dateInMonth(0, 2) },
+  { id: "notification-rent", title: "Rent payment pending", message: "Ground Floor rent is awaiting collection.", kind: "RENT_DUE", severity: "critical", status: "ACKNOWLEDGED", due_date: dateInMonth(0, 5), amount: 28000, action: { label: "Record collection", path: "/rental" }, acknowledged_at: dateInMonth(0, 6), created_at: dateInMonth(0, 3) },
+];
+
+const workLogs = [
+  { id: "work-foundation", project_id: projects[0].id, date: dateInMonth(5, 12), title: "Site excavation & foundation", party: "BuildRight Civil", status: "COMPLETED", progress: 100, description: "Excavation and foundation complete.", photos: [] },
+  { id: "work-slab", project_id: projects[0].id, date: dateInMonth(3, 18), title: "Ground floor slab casting", party: "BuildRight Civil", status: "COMPLETED", progress: 100, description: "Slab cast and cured.", photos: [] },
+  { id: "work-brickwork", project_id: projects[0].id, date: dateInMonth(0, 2), title: "First floor brickwork", party: "BuildRight Civil", status: "IN_PROGRESS", progress: 72, description: "Brickwork and lintels in progress.", photos: [] },
+];
+
+const data = {
+  accounts, family, projects, parties, transactions, lending, savings, pfPpf, investments, assets, liabilities, loans, insurance,
+  rentalProperties, rentalPayments, farms, documents, diary, goals, notifications, workLogs,
+  farmRentPayments,
+  users: [
+    { id: "user-admin", name: "Nivara Demo Admin", email: "demo.admin@nivara.app", role: "ADMIN", active: true },
+    { id: "user-architect", name: "Arjun (Architect)", email: "architect@example.com", role: "PARTY_USER", active: true, party_type: "Architect" },
+    { id: "user-contractor", name: "BuildRight (Contractor)", email: "contractor@example.com", role: "PARTY_USER", active: true, party_type: "Civil Contractor" },
+  ],
+  losses: [
+    { id: "loss-market", date: dateInMonth(2, 20), group: "Stock Market", category: "Equity", kind: "REALIZED", title: "Illustrative market fluctuation", amount: 18500 },
+    { id: "loss-repair", date: dateInMonth(4, 11), group: "Other", category: "Property", kind: "REALIZED", title: "Property maintenance", amount: 12500 },
+  ],
+  necessities: [
+    { id: "necessity-car", name: "Car maintenance", category: "Vehicle", amount: 8500, frequency: "Monthly", owner: "Self" },
+    { id: "necessity-school", name: "School fees", category: "Education", amount: 18000, frequency: "Monthly", owner: "Aarav" },
+  ],
+};
+
+const allMonths = Array.from({ length: 12 }, (_, index) => monthKey(11 - index));
+const trend = (key, base, growth) => allMonths.map((month, index) => ({ [key]: month, value: Math.round(base + index * growth) }));
+const cashFlowSeries = allMonths.map((month, index) => ({ period: month, in: 245000 + index * 3200, out: 168000 + index * 2100, net: 77000 + index * 1100 }));
+const overview = {
+  net_worth: 9271450, total_assets: 15633201, total_liabilities: 6361751,
+  cash: 61200, bank: 3250500, savings: 970000, pf_ppf: 1690000, investments: 1314500,
+  lending_outstanding: 225000, borrowing_outstanding: 500000,
+  month_income: 245000, month_expense: 168000, month_savings: 77000, month_rent_collected: 52000,
+  project_spend: 3700000, active_projects: 2, total_projects: 2, total_budget: 9750000,
+  cash_flow: cashFlowSeries,
+  income_breakdown: [{ name: "Salary", value: 1480000 }, { name: "Rental", value: 336000 }, { name: "Dividend", value: 148000 }],
+  expense_breakdown: [{ name: "Construction", value: 2100000 }, { name: "Household", value: 256000 }, { name: "EMI", value: 364000 }, { name: "Food", value: 168000 }],
+  allocation: [{ name: "Bank", value: 3250500 }, { name: "Cash", value: 61200 }, { name: "Savings", value: 970000 }, { name: "PF/PPF", value: 1690000 }, { name: "Investments", value: 1314500 }, { name: "Property", value: 6545000 }, { name: "Receivables", value: 225000 }],
+  attention: [{ type: "insurance_renewal", label: "Creta Motor Insurance renewal coming up", value: 28000, path: "/insurance" }, { type: "unpaid_rent", label: "Outstanding rent to collect", value: 28000, path: "/rental" }],
+  recent_activity: [],
+  cash_position: { available_now: 3311700, expected_receivables: 253000, upcoming_obligations: 500000 },
+  liability_allocation: [{ name: "Loans", value: 5861751 }, { name: "Borrowings", value: 500000 }],
+};
+
+const monthlySummary = (type, groupKey) => {
+  const rows = transactions.filter((item) => item.type === type);
+  const groups = {};
+  rows.forEach((item) => { const key = item[groupKey] || "Other"; groups[key] = (groups[key] || 0) + item.amount; });
+  const byMonth = {};
+  rows.forEach((item) => {
+    const month = (item.date || "").slice(0, 7);
+    if (month) byMonth[month] = (byMonth[month] || 0) + item.amount;
+  });
+  const byGroup = Object.entries(groups).map(([name, value]) => ({ name, value }));
+  return {
+    total: rows.reduce((sum, item) => sum + item.amount, 0),
+    this_month: type === "INCOME" ? overview.month_income : overview.month_expense,
+    this_year: rows.filter((item) => item.date.startsWith(String(new Date().getFullYear()))).reduce((sum, item) => sum + item.amount, 0),
+    by_group: byGroup,
+    by_category: byGroup,
+    by_month: allMonths.map((month, index) => ({ month, value: byMonth[month] || (type === "INCOME" ? 245000 : 168000) + index * (type === "INCOME" ? 3200 : 2100) })),
+  };
+};
+
+const netWorth = {
+  net_worth: overview.net_worth, total_assets: overview.total_assets, total_liabilities: overview.total_liabilities,
+  breakdown: { bank: overview.bank, cash: overview.cash, savings: overview.savings, pf_ppf: overview.pf_ppf, investments: overview.investments, property: 6545000, receivables: overview.lending_outstanding },
+  liability_breakdown: { loans: 5861751, borrowings: 500000 }, allocation: overview.allocation,
+};
+const netWorthHistory = { items: allMonths.map((month, index) => ({ date: `${month}-01`, net_worth: 8120000 + index * 104000 })), note: "Illustrative sample history for the public demo." };
+
+const staticResponses = {
+  "/dashboard/overview": overview,
+  "/networth": netWorth,
+  "/networth/history": netWorthHistory,
+  "/income/summary": monthlySummary("INCOME", "source"),
+  "/expenses/summary": monthlySummary("EXPENSE", "category"),
+  "/savings/summary": { total: 970000, count: savings.length, by_type: [{ name: "SAVINGS", value: 350000 }, { name: "FD", value: 500000 }, { name: "RD", value: 120000 }], contribution_trend: trend("month", 18000, 2500) },
+  "/pf-ppf/summary": { total: 1690000, pf: 985000, ppf: 705000, count: pfPpf.length, contribution_trend: trend("month", 22000, 4500) },
+  "/loans/summary": { total_sanctioned: 7000000, total_outstanding: 4984251, total_paid: 1906373, monthly_emi: 54570, count: loans.length, upcoming: loans },
+  "/insurance/summary": { total_annual_premium: 64200, total_cover: 2345000, count: insurance.length, upcoming_renewals: [{ ...insurance[0], days: 20 }], by_type: [{ name: "Car", value: 28000 }, { name: "Health", value: 32000 }, { name: "Bike", value: 4200 }] },
+  "/rental/summary": { monthly_rent: 52000, collected: 52000, outstanding: 28000, overdue: 0, collection_rate: 65, income_trend: trend("month", 42000, 900), by_property: [{ name: "Oakridge Villa", value: 52000 }] },
+  "/farms/summary": { total_income: 990000, total_expense: 492000, net: 498000, count: farms.length, per_farm: [{ ...farms[0], income: 510000, expense: 264000, net: 246000 }, { ...farms[1], income: 480000, expense: 228000, net: 252000 }], monthly: allMonths.map((month, index) => ({ month, in: 120000 + index * 3000, out: 82000 + index * 1400 })), annual_rent_due: 120000, annual_rent_received: 60000 },
+  "/planning/overview": {
+    actions: [{ id: "planner-rent", title: "Collect rent", due_date: dateInMonth(0, 5), amount: 28000, kind: "RECEIVABLE", path: "/rental", detail: "Oakridge Villa" }],
+    calendar: [{ id: "calendar-emi", title: "Home loan EMI", due_date: dateInMonth(0, 4), amount: 54570, kind: "LOAN", path: "/loans", detail: "Godrej Woodsville" }],
+    timeline: transactions.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8),
+    forecast: { cash_on_hand: 3311700, recorded_income: 245000, recorded_expense: 168000, scheduled_out: 54570, scheduled_in: 28000, projected_balance: 3285158, minimum_balance: 3250000, minimum_balance_date: dateInMonth(0, 30), tight_dates: [], daily_projection: [] },
+    health: { score: 82, signals: [{ label: "Emergency reserve is on track", good: true }, { label: "Insurance records are in place", good: true }, { label: "Monthly cash flow is positive", good: true }, { label: "Review the upcoming home-loan EMI", good: false }], metrics: { debt_to_income: 28, emi_ratio: 22, tax_documents: 1, scheduled_contributions: 2 } },
+  },
+  "/planning/ownership": { owners: [{ name: "Self", value: 10140000 }, { name: "Priya", value: 1470000 }, { name: "Farm / business", value: 252000 }], views: { mine: 10140000, family: 1470000, farm_business: 252000, consolidated: 11862000 } },
+  "/planning/inbox": [
+    { id: "review-expense", source: "transaction", source_id: "expense-home-0", title: "Household expense", detail: "Household · HDFC Salary Account", date: dateInMonth(0, 5), amount: 32000, state: "NEEDS_REVIEW", kind: "Expense" },
+    { id: "review-rent", source: "rent_payment", source_id: "rent-ground-0", title: "Oakridge Villa rent", detail: "Ground Floor · Suresh Kumar", date: dateInMonth(0, 5), amount: 28000, state: "NEEDS_REVIEW", kind: "Collection" },
+  ],
+  "/settings": { date_format: "DD-MM-YYYY", currency: "INR", organization_name: "Nivara Family Office", require_review: false, version: "2.6.0", income_categories: ["Salary", "Rental", "Dividend", "Business", "Other"], expense_categories: ["Household", "Utilities", "Food", "Travel", "EMI", "Medical", "Other"], project_categories: ["Civil", "Architecture", "Structural", "Plumbing", "Electrical", "Government", "Materials", "Labour", "Interior", "Consultant", "Equipment", "Transport", "Miscellaneous"], payment_methods: ["UPI", "Cash", "Bank Transfer", "Card", "Cheque"] },
+  "/version-history": { current: "2.6.0", releases: [{ version: "2.6.0", title: "A clearer financial picture", summary: "A unified workspace for household finances, projects and long-term goals.", date: "2026-10-01", changes: ["Portfolio dashboards", "Project cost tracking", "Financial planning"], internals: [] }, { version: "2.5.0", title: "Planning & protection", summary: "More insight into goals, loans and insurance.", date: "2026-08-15", changes: ["Goal tracking", "Insurance renewal calendar"], internals: [] }] },
+  "/access-meta": { roles: ["ADMIN", "PARTY_USER"], modules: ["overview", "work", "documents", "payments", "requests"] },
+  "/error-logs/unread-count": { count: 0 },
+  "/error-logs?scope=all": [],
+  "/error-logs?scope=unread": [],
+  "/notifications": { items: notifications, count: notifications.length },
+};
+let demoWalkthroughEnabled = true;
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function pathAndQuery(config) {
+  const raw = config.url || "/";
+  const parsed = new URL(raw, "http://demo.local");
+  return { path: parsed.pathname.replace(/^\/api/, ""), query: parsed.searchParams };
+}
+
+function listForPath(path) {
+  if (path === "/accounts") return data.accounts;
+  if (path === "/transactions") return data.transactions;
+  if (path === "/family") return data.family;
+  if (path === "/lending") return data.lending;
+  if (path === "/savings") return data.savings;
+  if (path === "/pf-ppf") return data.pfPpf;
+  if (path === "/investments") return data.investments;
+  if (path === "/assets") return data.assets;
+  if (path === "/liabilities") return data.liabilities;
+  if (path === "/loans") return data.loans.map(enrichLoan);
+  if (path === "/insurance") return data.insurance;
+  if (path === "/rental/properties") return data.rentalProperties;
+  if (path === "/rental/payments" || path === "/rental/rent-payments") return data.rentalPayments;
+  if (path === "/farms") return data.farms;
+  if (path === "/farms/rent-payments") return data.farmRentPayments;
+  if (path === "/projects") return data.projects;
+  if (path === "/parties") return data.parties;
+  if (path === "/documents") return data.documents;
+  if (path === "/diary") return data.diary;
+  if (path === "/goals") return data.goals;
+  if (path === "/users") return data.users;
+  if (path === "/notifications") return data.notifications;
+  if (path === "/losses") return data.losses;
+  if (path === "/necessities") return data.necessities;
+  if (path === "/work-logs") return data.workLogs;
+  return null;
+}
+
+function enrichLoan(loan) {
+  const disbursed = Number(loan.disbursed || loan.sanctioned || 0);
+  const principalPaid = Math.max(disbursed - Number(loan.outstanding || 0), 0);
+  return { ...loan, principal_paid: principalPaid, progress: disbursed ? Math.round((principalPaid / disbursed) * 10000) / 100 : 0 };
+}
+
+function projectFinance(projectId) {
+  const project = data.projects.find((item) => item.id === projectId);
+  const rows = data.transactions.filter((item) => item.project_id === projectId);
+  const spent = rows.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const received = rows.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const committed = data.parties.filter((item) => item.project_id === projectId).reduce((sum, item) => sum + Number(item.contract_value || 0), 0);
+  const byCategory = {};
+  const byParty = {};
+  const byMonth = {};
+  rows.forEach((item) => {
+    const month = (item.date || "").slice(0, 7);
+    if (item.type === "EXPENSE") {
+      const amount = Number(item.amount || 0);
+      const category = item.category || "Miscellaneous";
+      const party = item.party || "Direct";
+      byCategory[category] = (byCategory[category] || 0) + amount;
+      byParty[party] = (byParty[party] || 0) + amount;
+      if (month) {
+        byMonth[month] = byMonth[month] || { month, in: 0, out: 0 };
+        byMonth[month].out += amount;
+      }
+    } else if (item.type === "INCOME" && month) {
+      byMonth[month] = byMonth[month] || { month, in: 0, out: 0 };
+      byMonth[month].in += Number(item.amount || 0);
+    }
+  });
+  const budget = Number(project?.budget || 0);
+  return {
+    budget,
+    received,
+    spent,
+    committed,
+    outstanding: Math.max(committed - spent, 0),
+    available: received - spent,
+    remaining_budget: budget - spent,
+    variance: budget - spent,
+    utilization: budget > 0 ? Math.round((spent / budget) * 10000) / 100 : 0,
+    cost_by_category: Object.entries(byCategory).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+    cost_by_party: Object.entries(byParty).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+    monthly: Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)),
+  };
+}
+
+function enrichProject(project) {
+  const finance = projectFinance(project.id);
+  return { ...project, spent: finance.spent, received: finance.received, remaining: finance.remaining_budget };
+}
+
+function enrichParty(party) {
+  const paid = data.transactions
+    .filter((item) => item.project_id === party.project_id && item.type === "EXPENSE" && item.party === party.name)
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return { ...party, paid, outstanding: Number(party.contract_value || 0) - paid };
+}
+
+function responseForGet(path, query) {
+  if (path === "/sitewalkthrough/status") return { enabled: demoWalkthroughEnabled };
+  if (path === "/income/summary") return monthlySummary("INCOME", "source");
+  if (path === "/expenses/summary") return monthlySummary("EXPENSE", "category");
+  if (path === "/notifications") {
+    const status = query.get("status") || "OPEN";
+    const items = status === "ALL" ? data.notifications : data.notifications.filter((item) => item.status === status);
+    return { count: items.length, items: clone(items) };
+  }
+  if (path === "/error-logs") return [];
+  if (path === "/documents/link-options") return clone([
+    ...data.accounts.map((item) => ({ id: item.id, type: "account", label: item.name })),
+    ...data.projects.map((item) => ({ id: item.id, type: "project", label: item.name })),
+    ...data.loans.map((item) => ({ id: item.id, type: "loan", label: item.name })),
+  ]);
+  if (path === "/losses") {
+    const year = query.get("year");
+    return clone(year ? data.losses.filter((item) => item.date.startsWith(`${year}-`)) : data.losses);
+  }
+  if (path === "/losses/summary") {
+    const year = query.get("year");
+    const rows = year ? data.losses.filter((item) => item.date.startsWith(`${year}-`)) : data.losses;
+    const grouped = (key) => Object.entries(rows.reduce((totals, row) => {
+      const name = row[key] || (key === "group" ? "Other" : "Other Loss");
+      totals[name] = (totals[name] || 0) + Number(row.amount || 0);
+      return totals;
+    }, {})).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const periodTotals = rows.reduce((totals, row) => {
+      const period = row.date.slice(0, year ? 7 : 4);
+      totals[period] = (totals[period] || 0) + Number(row.amount || 0);
+      return totals;
+    }, {});
+    return { total: rows.reduce((sum, row) => sum + Number(row.amount || 0), 0), count: rows.length, by_group: grouped("group"), by_category: grouped("category"), trend: Object.entries(periodTotals).map(([period, value]) => ({ period, value })).sort((a, b) => a.period.localeCompare(b.period)) };
+  }
+  if (staticResponses[`${path}?${query.toString()}`]) return clone(staticResponses[`${path}?${query.toString()}`]);
+  if (staticResponses[path]) return clone(staticResponses[path]);
+  if (path === "/dashboard/cashflow") {
+    const period = query.get("period") || "monthly";
+    let series = cashFlowSeries;
+    if (period === "quarterly") {
+      const grouped = {};
+      series.forEach((item) => {
+        const [year, month] = item.period.split("-").map(Number);
+        const key = `${year}-Q${Math.floor((month - 1) / 3) + 1}`;
+        grouped[key] = grouped[key] || { period: key, in: 0, out: 0, net: 0 };
+        grouped[key].in += item.in; grouped[key].out += item.out; grouped[key].net += item.net;
+      });
+      series = Object.values(grouped);
+    } else if (period === "yearly") {
+      const currentYear = String(new Date().getFullYear());
+      series = [{ period: currentYear, in: 2980000, out: 2020000, net: 960000 }];
+    }
+    return { total_in: 2980000, total_out: 2020000, net: 960000, series: clone(series) };
+  }
+  if (path === "/transactions") {
+    let rows = data.transactions;
+    ["type", "scope", "project_id", "category", "account_id", "source", "farm_id"].forEach((key) => {
+      const value = query.get(key);
+      if (value) rows = rows.filter((item) => item[key] === value);
+    });
+    return clone(rows.slice().sort((a, b) => b.date.localeCompare(a.date)));
+  }
+  if (path === "/lending/summary") {
+    const direction = query.get("direction") || "LENT";
+    const rows = data.lending.filter((item) => item.direction === direction);
+    const total = rows.reduce((sum, row) => sum + row.amount, 0);
+    const recovered = rows.reduce((sum, row) => sum + (row.repayments || []).reduce((sub, payment) => sub + payment.amount, 0), 0);
+    return { total, recovered, outstanding: total - recovered, overdue: direction === "LENT" ? 75000 : 0, due_this_month: direction === "LENT" ? 75000 : 45570, by_person: rows.map((row) => ({ name: row.counterparty, value: Math.max(0, row.amount - (row.repayments || []).reduce((sum, payment) => sum + payment.amount, 0)) })), recovery_trend: trend("month", 15000, 2500) };
+  }
+  if (path === "/lending") {
+    const direction = query.get("direction");
+    return clone(direction ? data.lending.filter((row) => row.direction === direction) : data.lending);
+  }
+  if (path === "/projects") return clone(data.projects.map(enrichProject));
+  const projectMatch = path.match(/^\/projects\/([^/]+)$/);
+  if (projectMatch) {
+    const project = data.projects.find((item) => item.id === projectMatch[1]);
+    return project ? clone(project) : {};
+  }
+  const financeMatch = path.match(/^\/projects\/([^/]+)\/finance$/);
+  if (financeMatch) return clone(projectFinance(financeMatch[1]));
+  if (path === "/parties") {
+    const projectId = query.get("project_id");
+    return clone((projectId ? data.parties.filter((party) => party.project_id === projectId) : data.parties).map(enrichParty));
+  }
+  if (path === "/planning/actions") return { items: [{ id: "action-review", title: "Review upcoming insurance renewal", description: "Check the renewal options before the end of the month.", status: "OPEN", priority: "MEDIUM" }] };
+  if (path === "/search") {
+    const q = (query.get("q") || "").toLowerCase();
+    const items = [...data.projects, ...data.accounts, ...data.lending].filter((item) => JSON.stringify(item).toLowerCase().includes(q)).slice(0, 8).map((item) => ({ title: item.name || item.counterparty, path: item.id?.startsWith("project") ? `/projects/${item.id}` : "/accounts", type: "Demo record" }));
+    return { items };
+  }
+  if (path === "/party-portal") return { project: projects[0], party: parties[1], work_logs: clone(workLogs), payments: [] };
+  if (path === "/imports") return { items: [] };
+  if (path === "/version-history") return clone(staticResponses["/version-history"]);
+  if (path.startsWith("/error-logs")) return clone(staticResponses["/error-logs?scope=all"]);
+  if (path === "/planning/inbox") return clone(staticResponses["/planning/inbox"]);
+  if (path === "/planning/overview") return clone(staticResponses["/planning/overview"]);
+  if (path === "/planning/ownership") return clone(staticResponses["/planning/ownership"]);
+  if (path === "/networth/history") return clone(netWorthHistory);
+  if (path === "/farms/summary") return clone(staticResponses["/farms/summary"]);
+  const list = listForPath(path);
+  if (list) return clone(list);
+  return {};
+}
+
+function mutate(config, path, method) {
+  const body = typeof config.data === "string" ? (() => { try { return JSON.parse(config.data); } catch (_) { return {}; } })() : (config.data || {});
+  if (method === "put" && path === "/sitewalkthrough/status" && typeof body.enabled === "boolean") {
+    demoWalkthroughEnabled = body.enabled;
+    return { enabled: demoWalkthroughEnabled };
+  }
+  if (method === "post" && path === "/losses/unlock") return { token: "demo-loss-token", expires_in_hours: 8 };
+  const subresource = path.match(/^\/lending\/([^/]+)\/repayment$/);
+  if (method === "post" && subresource) {
+    const entry = data.lending.find((item) => item.id === subresource[1]);
+    if (entry) entry.repayments.push({ ...body, date: body.date || new Date().toISOString().slice(0, 10) });
+    return clone(entry || body);
+  }
+  const pathWithoutId = path.replace(/\/[^/]+$/, "") || path;
+  const routeToList = {
+    "/rental/properties": data.rentalProperties, "/rental/payments": data.rentalPayments, "/rental/rent-payments": data.rentalPayments,
+    "/farms/rent-payments": data.rentalPayments, "/projects": data.projects, "/parties": data.parties,
+    "/transactions": data.transactions, "/accounts": data.accounts, "/family": data.family, "/lending": data.lending,
+    "/savings": data.savings, "/pf-ppf": data.pfPpf, "/investments": data.investments, "/assets": data.assets,
+    "/liabilities": data.liabilities, "/loans": data.loans, "/insurance": data.insurance, "/farms": data.farms,
+    "/documents": data.documents, "/diary": data.diary, "/goals": data.goals, "/losses": data.losses,
+    "/necessities": data.necessities, "/users": data.users,
+  };
+  if (method === "post" && path === "/documents") {
+    const created = { id: `demo-${Date.now()}`, ...body, filename: body.name || "Demo document.pdf", category: body.category || "Other", created_at: new Date().toISOString(), size: 0, official: true };
+    data.documents.unshift(created);
+    return clone(created);
+  }
+  if (method === "post" && path === "/diary") {
+    const created = { id: `demo-${Date.now()}`, date: new Date().toISOString().slice(0, 10), ...body };
+    data.diary.unshift(created);
+    return clone(created);
+  }
+  if (method === "post" && path.endsWith("/acknowledge")) {
+    const itemId = path.split("/")[2];
+    const item = data.notifications.find((notification) => notification.id === itemId);
+    if (item) { item.status = "ACKNOWLEDGED"; item.acknowledged_at = new Date().toISOString(); }
+    return { status: "acknowledged" };
+  }
+  const farmRentMatch = path.match(/^\/farms\/rent-payments\/([^/]+)\/receive$/);
+  if (method === "post" && farmRentMatch) {
+    const payment = data.farmRentPayments.find((item) => item.id === farmRentMatch[1]);
+    if (payment) {
+      payment.amount_received = Math.min(payment.amount_due, payment.amount_received + (Number(body.amount) || 0));
+      payment.status = payment.amount_received >= payment.amount_due ? "COLLECTED" : "PARTIAL";
+    }
+    return clone(payment || body);
+  }
+  if (method === "post" && path === "/notifications/reminders") {
+    const reminder = { id: `demo-${Date.now()}`, kind: "CUSTOM_REMINDER", status: "OPEN", amount: Number(body.amount) || 0, action: { label: "Review reminder", path: "/notifications" }, created_at: new Date().toISOString(), ...body };
+    data.notifications.unshift(reminder);
+    return { status: "created" };
+  }
+  if (method === "post" && path.endsWith("/review")) return { status: "reviewed" };
+  if (method === "post" && (path.startsWith("/imports/") || path === "/imports/analyze" || path === "/proofs/extract")) return { id: `demo-${Date.now()}`, status: "ready", rows: [], items: [] };
+  const list = routeToList[path] || routeToList[pathWithoutId];
+  if (!list) return { status: "ok" };
+  if (method === "post") {
+    const created = {
+      id: `demo-${Date.now()}`,
+      ...body,
+      ...(path === "/accounts" ? { current_balance: Number(body.opening_balance) || 0 } : {}),
+    };
+    if (path === "/transactions") {
+      const account = data.accounts.find((item) => item.id === created.account_id);
+      if (account) {
+        const amount = Number(created.amount) || 0;
+        account.current_balance += created.type === "INCOME" ? amount : created.type === "EXPENSE" ? -amount : 0;
+      }
+    }
+    list.unshift(created);
+    return clone(created);
+  }
+  const rowId = path.slice(path.lastIndexOf("/") + 1);
+  const index = list.findIndex((item) => item.id === rowId);
+  if (method === "put" && index >= 0) {
+    list[index] = { ...list[index], ...body, id: rowId };
+    return clone(list[index]);
+  }
+  if (method === "delete" && index >= 0) {
+    list.splice(index, 1);
+    return { status: "deleted" };
+  }
+  return method === "put" ? clone(body) : { status: "ok" };
+}
+
+export function isDemoMode() {
+  return window.sessionStorage.getItem("nivara_demo_mode") === "true";
+}
+
+export function demoUser() {
+  return { id: "nivara-demo-admin", name: "Nivara Demo Admin", email: "demo.admin@nivara.app", role: "ADMIN", demo: true };
+}
+
+export function demoAdapter(config) {
+  const method = (config.method || "get").toLowerCase();
+  const { path, query } = pathAndQuery(config);
+  const response = method === "get" ? responseForGet(path, query) : mutate(config, path, method);
+  return Promise.resolve({
+    data: clone(response),
+    status: 200,
+    statusText: "OK",
+    headers: {},
+    config,
+    request: null,
+  });
+}
+
+export function resetDemoData() {
+  window.location.reload();
+}

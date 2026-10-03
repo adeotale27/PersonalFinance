@@ -1,4 +1,5 @@
 import axios from "axios";
+import { demoAdapter, isDemoMode } from "./demoData";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BASE}/api`;
@@ -16,7 +17,7 @@ export const invalidateCache = () => {
 
 api.getCached = (url, config = {}) => {
   const token = localStorage.getItem("nivara_token") || "";
-  const key = `${token}:${url}`;
+  const key = `${isDemoMode() ? "demo" : token}:${url}`;
   const { force = false, ...requestConfig } = config;
   const cached = responseCache.get(key);
   if (!force && cached && Date.now() - cached.at < CACHE_TTL) return Promise.resolve({ data: cached.data });
@@ -37,6 +38,10 @@ api.getCached = (url, config = {}) => {
 };
 
 api.interceptors.request.use((config) => {
+  if (isDemoMode()) {
+    config.adapter = demoAdapter;
+    return config;
+  }
   const token = localStorage.getItem("nivara_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -67,5 +72,7 @@ export function apiError(err) {
 }
 
 export const authToken = () => localStorage.getItem("nivara_token");
-export const docUrl = (id) => `${API}/documents/${id}/download?auth=${encodeURIComponent(authToken() || "")}`;
+export const docUrl = (id) => isDemoMode()
+  ? `data:text/plain;charset=utf-8,${encodeURIComponent(`Nivara sample document ${id}. This is demo content.`)}`
+  : `${API}/documents/${id}/download?auth=${encodeURIComponent(authToken() || "")}`;
 export default api;

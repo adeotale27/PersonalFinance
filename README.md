@@ -147,6 +147,14 @@ The app should open at:
 http://localhost:3000
 ```
 
+## Public walkthrough demo
+
+Share `/sitewalkthrough` to let visitors explore a public, no-login product tour. From there, **Explore the live demo** opens the full application with illustrative sample data across its pages.
+
+Visitors can try adding, editing, and deleting records. Demo API requests are handled in the browser and never sent to the database; sample data and any changes reset when the page is refreshed. The in-app demo banner makes this temporary mode visible and provides an exit back to the walkthrough.
+
+The platform administrator can enable or disable the public walkthrough from **Access Control → Public site walkthrough**. When disabled, the public route shows a message asking visitors to contact their administrator.
+
 ## 8) Log in
 
 Default admin credentials created by the backend startup script:
@@ -212,4 +220,3 @@ npm start
 - Stop the frontend with `Ctrl + C` in the frontend terminal.
 
 If you want, I can also add a ready-to-use `.env.example` file for both the backend and frontend so setup is even easier.
-
